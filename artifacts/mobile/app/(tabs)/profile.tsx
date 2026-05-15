@@ -1,6 +1,5 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -13,181 +12,128 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { VideoCard } from "@/components/VideoCard";
-import { SCHOLARS, VIDEOS } from "@/data/mockData";
+import { SCHOLARS } from "@/data/mockData";
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 
 const MENU_ITEMS = [
-  { icon: "person-outline", label: "Edit Profile", route: "/auth" },
-  { icon: "bookmark-outline", label: "Saved Videos", route: "/(tabs)/library" },
-  { icon: "notifications-outline", label: "Notifications", route: "/notifications" },
-  { icon: "shield-checkmark-outline", label: "Privacy & Security", route: null },
-  { icon: "help-circle-outline", label: "Help & Support", route: null },
-  { icon: "information-circle-outline", label: "About IslamicTube", route: null },
+  { icon: "time-outline" as const, label: "History" },
+  { icon: "play-circle-outline" as const, label: "Your videos" },
+  { icon: "bookmark-outline" as const, label: "Saved videos" },
+  { icon: "thumbs-up-outline" as const, label: "Liked videos" },
+  { icon: "settings-outline" as const, label: "Settings" },
+  { icon: "help-circle-outline" as const, label: "Help & feedback" },
 ];
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : 0;
+  const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
 
-  const guestUser = {
-    name: "Guest User",
-    email: "Sign in to access all features",
-    avatar: require("../../assets/images/placeholder-scholar.png"),
-  };
-
-  const displayUser = user ?? guestUser;
+  const displayName = user ? user.name : "Sign in";
+  const displayHandle = user ? "@user · IslamicTube" : "Personalize your experience";
+  const displayAvatar = require("../../assets/images/placeholder-scholar.png");
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+    <View style={[styles.screen, { backgroundColor: "#FFFFFF" }]}>
+      {/* Navbar */}
+      <View style={[styles.navbar, { paddingTop: topPad + 4, borderBottomColor: "#E5E5E5" }]}>
+        <Text style={styles.navTitle}>You</Text>
+        <View style={styles.navRight}>
+          <TouchableOpacity style={styles.navBtn} onPress={() => router.push("/(tabs)/search")}>
+            <Feather name="search" size={22} color="#0F0F0F" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navBtn}>
+            <Feather name="settings" size={22} color="#0F0F0F" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 + bottomPad }}
+        contentContainerStyle={{ paddingBottom: bottomPad }}
       >
-        {/* Header gradient */}
-        <LinearGradient
-          colors={[colors.primary, colors.background]}
-          style={[styles.headerGradient, { paddingTop: topPad + 16 }]}
+        {/* User identity row */}
+        <TouchableOpacity
+          style={styles.identityRow}
+          activeOpacity={0.8}
+          onPress={() => !user && router.push("/auth")}
         >
-          <View style={styles.profileTop}>
-            <View style={styles.avatarWrapper}>
-              <Image
-                source={displayUser.avatar}
-                style={styles.avatar}
-                contentFit="cover"
-              />
-              {user && (
-                <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
-                  <Feather name="edit-2" size={10} color="#fff" />
-                </View>
-              )}
-            </View>
-            <Text style={styles.name}>{displayUser.name}</Text>
-            <Text style={styles.email}>{displayUser.email}</Text>
-
+          <Image
+            source={displayAvatar}
+            style={styles.avatar}
+            contentFit="cover"
+          />
+          <View style={styles.identityText}>
+            <Text style={styles.userName}>{displayName}</Text>
+            <Text style={styles.userHandle}>{displayHandle}</Text>
             {!user && (
-              <TouchableOpacity
-                style={[styles.loginBtn, { backgroundColor: colors.primary }]}
-                onPress={() => router.push("/auth")}
-              >
-                <Text style={styles.loginBtnText}>Sign In</Text>
-              </TouchableOpacity>
+              <Text style={styles.signInLink}>Sign in &rsaquo;</Text>
             )}
           </View>
-        </LinearGradient>
+        </TouchableOpacity>
 
-        {/* Stats row */}
-        {user && (
-          <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {[
-              { label: "Watched", value: "127" },
-              { label: "Saved", value: "34" },
-              { label: "Liked", value: "89" },
-              { label: "Playlists", value: "6" },
-            ].map((stat) => (
-              <View key={stat.label} style={styles.stat}>
-                <Text style={[styles.statValue, { color: colors.primary }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <View style={styles.divider} />
 
-        {/* Theme toggle */}
-        <View style={[styles.settingCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-              <Ionicons
-                name={isDark ? "moon" : "sunny-outline"}
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={[styles.settingLabel, { color: colors.foreground }]}>
-                {isDark ? "Dark Mode" : "Light Mode"}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.toggle,
-                { backgroundColor: isDark ? colors.primary : colors.secondary },
-              ]}
-              onPress={toggleTheme}
-            >
-              <View
-                style={[
-                  styles.toggleThumb,
-                  {
-                    backgroundColor: isDark ? "#fff" : colors.mutedForeground,
-                    transform: [{ translateX: isDark ? 20 : 2 }],
-                  },
-                ]}
-              />
+        {/* Subscribed scholars */}
+        <View style={styles.scholarsSection}>
+          <View style={styles.scholarsHeader}>
+            <Text style={styles.scholarsTitle}>Subscriptions</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Subscribed Scholars */}
-        {user && (
-          <View style={styles.scholarsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Subscribed Scholars
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scholarsRow}>
-              {SCHOLARS.map((scholar) => (
-                <TouchableOpacity
-                  key={scholar.id}
-                  style={styles.scholarItem}
-                  onPress={() => router.push(`/channel/${scholar.id}`)}
-                >
-                  <Image source={scholar.avatar} style={styles.scholarAvatar} contentFit="cover" />
-                  <Text style={[styles.scholarName, { color: colors.foreground }]} numberOfLines={1}>
-                    {scholar.name.split(" ")[1]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Menu items */}
-        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {MENU_ITEMS.map((item, index) => (
-            <TouchableOpacity
-              key={item.label}
-              style={[
-                styles.menuItem,
-                index < MENU_ITEMS.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-              ]}
-              onPress={() => item.route && router.push(item.route as never)}
-            >
-              <Ionicons name={item.icon as any} size={20} color={colors.primary} />
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Logout */}
-        {user && (
-          <TouchableOpacity
-            style={[styles.logoutBtn, { borderColor: "#EF4444" }]}
-            onPress={() => logout()}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scholarsRow}
           >
-            <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-            <Text style={styles.logoutText}>Sign Out</Text>
+            {SCHOLARS.map((scholar) => (
+              <TouchableOpacity
+                key={scholar.id}
+                style={styles.scholarItem}
+                onPress={() => router.push(`/channel/${scholar.id}`)}
+              >
+                <View style={styles.scholarAvatarWrap}>
+                  <Image
+                    source={scholar.avatar}
+                    style={styles.scholarAvatar}
+                    contentFit="cover"
+                  />
+                  <View style={styles.liveRing} />
+                </View>
+                <Text style={styles.scholarName} numberOfLines={1}>
+                  {scholar.name.split(" ").slice(-1)[0]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Menu list */}
+        {MENU_ITEMS.map((item, i) => (
+          <TouchableOpacity key={item.label} style={styles.menuRow}>
+            <Ionicons name={item.icon} size={22} color="#0F0F0F" />
+            <Text style={styles.menuLabel}>{item.label}</Text>
+            <Feather name="chevron-right" size={16} color="#909090" />
+          </TouchableOpacity>
+        ))}
+
+        <View style={styles.divider} />
+
+        {user && (
+          <TouchableOpacity style={styles.menuRow} onPress={() => logout()}>
+            <Ionicons name="log-out-outline" size={22} color="#FF0000" />
+            <Text style={[styles.menuLabel, { color: "#FF0000" }]}>Sign out</Text>
           </TouchableOpacity>
         )}
 
-        <Text style={[styles.version, { color: colors.mutedForeground }]}>
-          IslamicTube v1.0.0
-        </Text>
+        <Text style={styles.version}>IslamicTube v1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -197,176 +143,127 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  headerGradient: {
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-  },
-  profileTop: {
-    alignItems: "center",
-    gap: 8,
-  },
-  avatarWrapper: {
-    position: "relative",
-    marginBottom: 4,
-  },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
-  editBadge: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  name: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  email: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 13,
-  },
-  loginBtn: {
-    marginTop: 8,
-    paddingHorizontal: 28,
-    paddingVertical: 10,
-    borderRadius: 24,
-  },
-  loginBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  statsRow: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-  stat: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 14,
-    gap: 2,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  statLabel: {
-    fontSize: 11,
-  },
-  settingCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  settingRow: {
+  navbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "#FFFFFF",
   },
-  settingLeft: {
+  navTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#0F0F0F",
+  },
+  navRight: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  navBtn: {
+    padding: 8,
+  },
+  identityRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  settingLabel: {
-    fontSize: 14,
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  identityText: {
+    flex: 1,
+    gap: 2,
+  },
+  userName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#0F0F0F",
+  },
+  userHandle: {
+    fontSize: 13,
+    color: "#606060",
+  },
+  signInLink: {
+    fontSize: 13,
+    color: "#2563EB",
     fontWeight: "500",
+    marginTop: 2,
   },
-  toggle: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-  },
-  toggleThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#E5E5E5",
+    marginVertical: 4,
   },
   scholarsSection: {
-    marginTop: 20,
-    paddingLeft: 16,
+    paddingVertical: 12,
   },
-  sectionTitle: {
+  scholarsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  scholarsTitle: {
     fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 12,
+    fontWeight: "600",
+    color: "#0F0F0F",
+  },
+  seeAll: {
+    fontSize: 13,
+    color: "#2563EB",
   },
   scholarsRow: {
+    paddingHorizontal: 16,
     gap: 16,
-    paddingRight: 16,
   },
   scholarItem: {
     alignItems: "center",
-    gap: 5,
-    width: 60,
+    gap: 6,
+    width: 62,
+  },
+  scholarAvatarWrap: {
+    position: "relative",
   },
   scholarAvatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
+    borderWidth: 2,
+    borderColor: "#E5E5E5",
+  },
+  liveRing: {
+    position: "absolute",
+    inset: -2,
+    borderRadius: 30,
   },
   scholarName: {
     fontSize: 11,
+    color: "#0F0F0F",
     textAlign: "center",
   },
-  menuCard: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-  menuItem: {
+  menuRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
   menuLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: "500",
-  },
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  logoutText: {
-    color: "#EF4444",
-    fontSize: 14,
-    fontWeight: "700",
+    color: "#0F0F0F",
   },
   version: {
     textAlign: "center",
-    fontSize: 12,
+    fontSize: 11,
+    color: "#909090",
     marginTop: 16,
     marginBottom: 8,
   },

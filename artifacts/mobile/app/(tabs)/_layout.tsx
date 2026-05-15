@@ -1,52 +1,41 @@
-import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useColors } from "@/hooks/useColors";
-
-const TAB_BAR_HEIGHT = 50;
+const ACTIVE = "#0F0F0F";
+const INACTIVE = "#909090";
+const BG = "#FFFFFF";
+const BORDER = "#E5E5E5";
 
 export default function TabLayout() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
-  const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const isIOS = Platform.OS === "ios";
 
-  const tabBarHeight = isWeb ? 84 : TAB_BAR_HEIGHT + insets.bottom;
+  const tabBarHeight = isWeb ? 56 : 50 + insets.bottom;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.foreground,
-        tabBarInactiveTintColor: colors.mutedForeground,
+        tabBarActiveTintColor: ACTIVE,
+        tabBarInactiveTintColor: INACTIVE,
         tabBarStyle: {
-          backgroundColor: isIOS ? "transparent" : colors.background,
+          backgroundColor: BG,
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: colors.border,
+          borderTopColor: BORDER,
           elevation: 0,
+          shadowOpacity: 0,
           height: tabBarHeight,
-          paddingBottom: isWeb ? 16 : insets.bottom,
+          paddingBottom: isWeb ? 8 : insets.bottom,
           paddingTop: 6,
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={100}
-              tint="light"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: "500",
-          marginTop: 1,
-        },
-        tabBarIconStyle: {
-          marginBottom: 0,
+          fontWeight: "400",
+          marginTop: 2,
         },
       }}
     >
@@ -56,9 +45,9 @@ export default function TabLayout() {
           title: "Home",
           tabBarIcon: ({ color, focused }) =>
             focused ? (
-              <Ionicons name="home" size={22} color={color} />
+              <Ionicons name="home" size={24} color={color} />
             ) : (
-              <Ionicons name="home-outline" size={22} color={color} />
+              <Ionicons name="home-outline" size={24} color={color} />
             ),
         }}
       />
@@ -66,13 +55,12 @@ export default function TabLayout() {
         name="shorts"
         options={{
           title: "Shorts",
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? "play-box" : "play-box-outline"}
-              size={22}
-              color={color}
-            />
-          ),
+          tabBarIcon: ({ color, focused }) =>
+            focused ? (
+              <MaterialCommunityIcons name="play-box" size={24} color={color} />
+            ) : (
+              <MaterialCommunityIcons name="play-box-outline" size={24} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
@@ -80,12 +68,9 @@ export default function TabLayout() {
         options={{
           title: "Create",
           tabBarIcon: ({ color }) => (
-            <View style={styles.createBtn}>
-              <Feather name="plus" size={20} color="#0F0F0F" />
+            <View style={styles.createIcon}>
+              <Feather name="plus" size={18} color="#0F0F0F" />
             </View>
-          ),
-          tabBarLabel: ({ focused, color }) => (
-            <Text style={[styles.createLabel, { color }]}>Create</Text>
           ),
         }}
       />
@@ -95,9 +80,9 @@ export default function TabLayout() {
           title: "Subscriptions",
           tabBarIcon: ({ color, focused }) =>
             focused ? (
-              <Ionicons name="people" size={22} color={color} />
+              <Ionicons name="people" size={24} color={color} />
             ) : (
-              <Ionicons name="people-outline" size={22} color={color} />
+              <Ionicons name="people-outline" size={24} color={color} />
             ),
         }}
       />
@@ -107,9 +92,9 @@ export default function TabLayout() {
           title: "You",
           tabBarIcon: ({ color, focused }) =>
             focused ? (
-              <Ionicons name="person-circle" size={22} color={color} />
+              <Ionicons name="person-circle" size={24} color={color} />
             ) : (
-              <Ionicons name="person-circle-outline" size={22} color={color} />
+              <Ionicons name="person-circle-outline" size={24} color={color} />
             ),
         }}
       />
@@ -118,17 +103,14 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  createBtn: {
-    width: 32,
-    height: 22,
-    borderRadius: 4,
-    backgroundColor: "#E5E5E5",
+  createIcon: {
+    width: 34,
+    height: 24,
+    backgroundColor: "#F2F2F2",
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#D0D0D0",
     alignItems: "center",
     justifyContent: "center",
-  },
-  createLabel: {
-    fontSize: 10,
-    fontWeight: "500",
-    marginTop: 1,
   },
 });
