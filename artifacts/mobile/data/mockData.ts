@@ -466,16 +466,16 @@ export const LIVE_STREAMS: LiveStream[] = [
 export const CATEGORIES = [
   "All",
   "Quran",
-  "Seerah",
-  "Fiqh",
-  "Spirituality",
-  "Dhikr",
+  "Hadith",
+  "Lectures",
   "Dua",
+  "Shorts",
+  "Live",
+  "Trending",
+  "Fiqh",
+  "Seerah",
+  "Spirituality",
   "Ramadan",
-  "Family",
-  "Finance",
-  "Reminder",
-  "History",
 ];
 
 export const HERO_BANNERS = [

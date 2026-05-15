@@ -31,8 +31,7 @@ export function CategoryFilter({ categories, selected, onSelect }: CategoryFilte
             style={[
               styles.chip,
               {
-                backgroundColor: isSelected ? colors.primary : colors.secondary,
-                borderColor: isSelected ? colors.primary : colors.border,
+                backgroundColor: isSelected ? colors.chipActive : colors.chipInactive,
               },
             ]}
             activeOpacity={0.8}
@@ -42,7 +41,7 @@ export function CategoryFilter({ categories, selected, onSelect }: CategoryFilte
               style={[
                 styles.chipText,
                 {
-                  color: isSelected ? colors.primaryForeground : colors.foreground,
+                  color: isSelected ? colors.chipActiveText : colors.chipInactiveText,
                   fontWeight: isSelected ? "600" : "400",
                 },
               ]}
@@ -58,15 +57,14 @@ export function CategoryFilter({ categories, selected, onSelect }: CategoryFilte
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     gap: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   chip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 8,
   },
   chipText: {
     fontSize: 13,

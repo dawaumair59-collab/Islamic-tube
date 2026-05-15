@@ -1,11 +1,9 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   RefreshControl,
   ScrollView,
@@ -17,70 +15,103 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CategoryFilter } from "@/components/CategoryFilter";
-import { HeroBanner } from "@/components/HeroBanner";
 import { VideoCard } from "@/components/VideoCard";
-import { VideoListSkeleton } from "@/components/LoadingSkeleton";
-import { CATEGORIES, LIVE_STREAMS, VIDEOS } from "@/data/mockData";
+import { CATEGORIES, LIVE_STREAMS, SHORTS, VIDEOS } from "@/data/mockData";
 import { useColors } from "@/hooks/useColors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SHORTS_CARD_W = 110;
+const LIVE_CARD_W = 260;
 
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : 0;
+  const bottomPad = Platform.OS === "web" ? 84 : insets.bottom;
 
   const filteredVideos =
     selectedCategory === "All"
       ? VIDEOS
+      : selectedCategory === "Live"
+      ? []
+      : selectedCategory === "Shorts"
+      ? []
       : VIDEOS.filter((v) => v.category === selectedCategory);
+
+  const showShorts = selectedCategory === "All" || selectedCategory === "Shorts";
+  const showLive = selectedCategory === "All" || selectedCategory === "Live";
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+    setTimeout(() => setRefreshing(false), 1200);
   };
-
-  const liveStream = LIVE_STREAMS.find((l) => l.isLive);
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {/* Sticky header */}
+
+      {/* Top Navbar */}
       <View
         style={[
-          styles.header,
+          styles.navbar,
           {
-            paddingTop: topPad + 8,
+            paddingTop: topPad + 6,
             backgroundColor: colors.background,
             borderBottomColor: colors.border,
           },
         ]}
       >
-        <View style={styles.headerLeft}>
-          <View style={[styles.logoMark, { backgroundColor: colors.primary }]}>
-            <MaterialCommunityIcons name="moon-waxing-crescent" size={16} color="#fff" />
-          </View>
-          <Text style={[styles.logo, { color: colors.primary }]}>IslamicTube</Text>
+        <View style={styles.navLeft}>
+          <MaterialCommunityIcons
+            name="moon-waxing-crescent"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={[styles.navLogo, { color: colors.foreground }]}>
+            <Text style={{ color: colors.primary }}>Islamic</Text>Tube
+          </Text>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => router.push("/notifications")} style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={22} color={colors.foreground} />
-            <View style={[styles.notifDot, { backgroundColor: "#EF4444" }]} />
+        <View style={styles.navRight}>
+          <TouchableOpacity
+            style={styles.navIcon}
+            onPress={() => router.push("/(tabs)/search")}
+          >
+            <Feather name="search" size={22} color={colors.foreground} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/auth")} style={styles.iconBtn}>
-            <Ionicons name="person-circle-outline" size={26} color={colors.foreground} />
+          <TouchableOpacity
+            style={styles.navIcon}
+            onPress={() => router.push("/notifications")}
+          >
+            <Ionicons name="notifications-outline" size={22} color={colors.foreground} />
+            <View style={[styles.notifDot, { backgroundColor: "#FF0000" }]} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.navIcon}
+            onPress={() => router.push("/auth")}
+          >
+            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+              <Text style={styles.avatarText}>A</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Category chips — sticky below navbar */}
+      <View style={[styles.chipsBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <CategoryFilter
+          categories={CATEGORIES}
+          selected={selectedCategory}
+          onSelect={setSelectedCategory}
+        />
+      </View>
+
+      {/* Feed */}
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 + bottomPad }}
+        contentContainerStyle={{ paddingBottom: bottomPad + 80, paddingTop: 8 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -89,80 +120,137 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Search bar tap-to-navigate */}
-        <TouchableOpacity
-          style={[styles.searchBar, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-          activeOpacity={0.8}
-          onPress={() => router.push("/(tabs)/search")}
-        >
-          <Feather name="search" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.searchPlaceholder, { color: colors.mutedForeground }]}>
-            Search Islamic content...
-          </Text>
-          <Feather name="mic" size={16} color={colors.mutedForeground} />
-        </TouchableOpacity>
 
-        {/* Hero Banner */}
-        <HeroBanner />
+        {/* First 2 videos */}
+        {filteredVideos.slice(0, 2).map((video) => (
+          <VideoCard key={video.id} video={video} />
+        ))}
 
-        {/* Live Now */}
-        {liveStream && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.livePill}>
-                <View style={styles.liveDot} />
-                <Text style={styles.livePillText}>LIVE NOW</Text>
+        {/* Shorts shelf */}
+        {showShorts && (
+          <View style={styles.shelf}>
+            <View style={styles.shelfHeader}>
+              <View style={styles.shortsLabel}>
+                <View style={[styles.shortsDot, { backgroundColor: colors.destructive }]} />
+                <Text style={[styles.shelfTitle, { color: colors.foreground }]}>Shorts</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/shorts")}>
+                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.shortsRow}
+            >
+              {SHORTS.map((s) => (
+                <TouchableOpacity
+                  key={s.id}
+                  style={styles.shortsCard}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/(tabs)/shorts")}
+                >
+                  <View style={[styles.shortsThumbWrap, { backgroundColor: colors.card }]}>
+                    <Image
+                      source={s.thumbnail}
+                      style={styles.shortsThumb}
+                      contentFit="cover"
+                    />
+                    <View style={styles.shortsDuration}>
+                      <Text style={styles.shortsDurationText}>{s.duration}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.shortsCardTitle, { color: colors.foreground }]} numberOfLines={2}>
+                    {s.title}
+                  </Text>
+                  <Text style={[styles.shortsViews, { color: colors.mutedForeground }]}>
+                    {s.views} views
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Middle videos (3 & 4) */}
+        {filteredVideos.slice(2, 4).map((video) => (
+          <VideoCard key={video.id} video={video} />
+        ))}
+
+        {/* Live section */}
+        {showLive && LIVE_STREAMS.filter((l) => l.isLive).length > 0 && (
+          <View style={styles.shelf}>
+            <View style={styles.shelfHeader}>
+              <View style={styles.liveLabel}>
+                <View style={[styles.liveDot, { backgroundColor: "#FF0000" }]} />
+                <Text style={[styles.shelfTitle, { color: colors.foreground }]}>Live now</Text>
               </View>
               <TouchableOpacity onPress={() => router.push("/live")}>
                 <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[styles.liveCard, { backgroundColor: colors.card }]}
-              activeOpacity={0.9}
-              onPress={() => router.push("/live")}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.liveRow}
             >
-              <Image source={liveStream.thumbnail} style={styles.liveThumb} contentFit="cover" />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.9)"]}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.liveOverlay}>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDotSmall} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <Text style={styles.liveViewers}>
-                  {liveStream.viewers} watching
-                </Text>
-              </View>
-              <View style={styles.liveInfo}>
-                <Text style={styles.liveTitle} numberOfLines={1}>{liveStream.title}</Text>
-                <Text style={styles.liveScholar}>{liveStream.scholar}</Text>
-              </View>
-            </TouchableOpacity>
+              {LIVE_STREAMS.filter((l) => l.isLive).map((stream) => (
+                <TouchableOpacity
+                  key={stream.id}
+                  style={[styles.liveCard, { backgroundColor: colors.card }]}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/live")}
+                >
+                  <View style={styles.liveThumbWrap}>
+                    <Image
+                      source={stream.thumbnail}
+                      style={styles.liveThumb}
+                      contentFit="cover"
+                    />
+                    <View style={styles.liveBadge}>
+                      <View style={styles.liveBadgeDot} />
+                      <Text style={styles.liveBadgeText}>LIVE</Text>
+                    </View>
+                    <View style={styles.liveViewersPill}>
+                      <Text style={styles.liveViewersText}>{stream.viewers} watching</Text>
+                    </View>
+                  </View>
+                  <View style={styles.liveInfo}>
+                    <Image
+                      source={stream.scholarAvatar}
+                      style={styles.liveAvatar}
+                      contentFit="cover"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.liveTitle, { color: colors.foreground }]} numberOfLines={2}>
+                        {stream.title}
+                      </Text>
+                      <Text style={[styles.liveMeta, { color: colors.mutedForeground }]}>
+                        {stream.scholar}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
 
-        {/* Categories */}
-        <View style={styles.categoriesWrapper}>
-          <CategoryFilter
-            categories={CATEGORIES}
-            selected={selectedCategory}
-            onSelect={setSelectedCategory}
-          />
-        </View>
+        {/* Remaining videos */}
+        {filteredVideos.slice(4).map((video) => (
+          <VideoCard key={video.id} video={video} />
+        ))}
 
-        {/* Videos Feed */}
-        <View style={styles.feed}>
-          {loading ? (
-            <VideoListSkeleton count={4} />
-          ) : (
-            filteredVideos.map((video) => (
-              <VideoCard key={video.id} video={video} />
-            ))
-          )}
-        </View>
+        {/* If filtered list is empty */}
+        {filteredVideos.length === 0 && !showShorts && !showLive && (
+          <View style={styles.emptyState}>
+            <Ionicons name="videocam-outline" size={48} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              No videos in this category yet
+            </Text>
+          </View>
+        )}
+
       </ScrollView>
     </View>
   );
@@ -172,175 +260,224 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  header: {
+  navbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
     zIndex: 10,
   },
-  headerLeft: {
+  navLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
-  logoMark: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logo: {
+  navLogo: {
     fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
-  headerRight: {
+  navRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 0,
   },
-  iconBtn: {
-    padding: 6,
+  navIcon: {
+    padding: 8,
     position: "relative",
   },
   notifDot: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 7,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     borderWidth: 1.5,
     borderColor: "#fff",
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  chipsBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   scroll: {
     flex: 1,
   },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    marginHorizontal: 16,
-    marginVertical: 12,
+  shelf: {
+    marginBottom: 20,
   },
-  searchPlaceholder: {
-    flex: 1,
-    fontSize: 14,
-  },
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 16,
-  },
-  sectionHeader: {
+  shelfHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 12,
     marginBottom: 10,
   },
-  livePill: {
+  shortsLabel: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#EF4444",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  },
+  shortsDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  liveLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#fff",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  liveDotSmall: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#fff",
-  },
-  livePillText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+  shelfTitle: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   seeAll: {
     fontSize: 13,
+    fontWeight: "500",
+  },
+  shortsRow: {
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  shortsCard: {
+    width: SHORTS_CARD_W,
+    gap: 5,
+  },
+  shortsThumbWrap: {
+    width: SHORTS_CARD_W,
+    height: SHORTS_CARD_W * 1.78,
+    borderRadius: 6,
+    overflow: "hidden",
+    position: "relative",
+  },
+  shortsThumb: {
+    width: "100%",
+    height: "100%",
+  },
+  shortsDuration: {
+    position: "absolute",
+    bottom: 5,
+    left: 5,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  shortsDurationText: {
+    color: "#fff",
+    fontSize: 10,
     fontWeight: "600",
   },
+  shortsCardTitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    lineHeight: 16,
+  },
+  shortsViews: {
+    fontSize: 11,
+  },
+  liveRow: {
+    paddingHorizontal: 12,
+    gap: 10,
+  },
   liveCard: {
-    borderRadius: 12,
+    width: LIVE_CARD_W,
+    borderRadius: 6,
     overflow: "hidden",
-    height: 180,
+  },
+  liveThumbWrap: {
+    width: LIVE_CARD_W,
+    height: (LIVE_CARD_W * 9) / 16,
     position: "relative",
   },
   liveThumb: {
     width: "100%",
     height: "100%",
   },
-  liveOverlay: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    right: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   liveBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#EF4444",
-    borderRadius: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    backgroundColor: "#FF0000",
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  liveBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#fff",
   },
   liveBadgeText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  liveViewers: {
+  liveViewersPill: {
+    position: "absolute",
+    bottom: 6,
+    right: 6,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  liveViewersText: {
     color: "#fff",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "500",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
   },
   liveInfo: {
-    position: "absolute",
-    bottom: 12,
-    left: 12,
-    right: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 8,
+  },
+  liveAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    flexShrink: 0,
   },
   liveTitle: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 2,
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
   },
-  liveScholar: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 12,
+  liveMeta: {
+    fontSize: 11,
+    marginTop: 2,
   },
-  categoriesWrapper: {
-    marginTop: 16,
-    marginBottom: 4,
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 12,
   },
-  feed: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+  emptyText: {
+    fontSize: 14,
   },
 });

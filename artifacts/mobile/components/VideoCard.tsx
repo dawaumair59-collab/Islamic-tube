@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
+  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -19,87 +21,136 @@ interface VideoCardProps {
 
 export function VideoCard({ video, horizontal = false }: VideoCardProps) {
   const colors = useColors();
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  if (horizontal) {
+    return (
+      <TouchableOpacity
+        style={[styles.horizontal, { backgroundColor: colors.background }]}
+        activeOpacity={0.8}
+        onPress={() => router.push(`/watch/${video.id}`)}
+      >
+        <View style={styles.thumbHorizontal}>
+          <Image
+            source={video.thumbnail}
+            style={styles.thumbImgHorizontal}
+            contentFit="cover"
+            transition={150}
+          />
+          <View style={styles.durationBadge}>
+            <Text style={styles.durationText}>{video.duration}</Text>
+          </View>
+        </View>
+        <View style={styles.infoHorizontal}>
+          <Text style={[styles.titleHorizontal, { color: colors.foreground }]} numberOfLines={2}>
+            {video.title}
+          </Text>
+          <Text style={[styles.metaSmall, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {video.scholar}
+          </Text>
+          <Text style={[styles.metaSmall, { color: colors.mutedForeground }]}>
+            {video.views} views · {video.createdAt}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
-      style={[
-        styles.container,
-        horizontal && styles.horizontal,
-        { backgroundColor: colors.background },
-      ]}
-      activeOpacity={0.85}
+      style={[styles.container, { backgroundColor: colors.background }]}
+      activeOpacity={0.9}
       onPress={() => router.push(`/watch/${video.id}`)}
     >
-      <View style={[styles.thumbnailWrapper, horizontal && styles.thumbnailHorizontal]}>
+      {/* Thumbnail — full width, edge-to-edge */}
+      <View style={styles.thumbWrap}>
         <Image
           source={video.thumbnail}
-          style={styles.thumbnail}
+          style={styles.thumbImg}
           contentFit="cover"
-          transition={200}
+          transition={150}
         />
         <View style={styles.durationBadge}>
           <Text style={styles.durationText}>{video.duration}</Text>
         </View>
-        {video.type === "short" && (
-          <View style={[styles.shortsBadge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.shortsText}>SHORT</Text>
-          </View>
-        )}
       </View>
 
-      <View style={[styles.info, horizontal && styles.infoHorizontal]}>
-        <Text
-          style={[styles.title, { color: colors.foreground }]}
-          numberOfLines={horizontal ? 2 : 2}
+      {/* Info row */}
+      <View style={styles.infoRow}>
+        <TouchableOpacity
+          onPress={() => router.push(`/channel/${video.scholarId}`)}
+          activeOpacity={0.8}
         >
-          {video.title}
-        </Text>
-
-        <View style={styles.meta}>
           <Image
             source={video.scholarAvatar}
             style={styles.avatar}
             contentFit="cover"
           />
-          <View style={styles.metaText}>
-            <View style={styles.scholarRow}>
-              <Text style={[styles.scholar, { color: colors.primary }]} numberOfLines={1}>
-                {video.scholar}
-              </Text>
-              <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
-            </View>
-            <Text style={[styles.stats, { color: colors.mutedForeground }]}>
-              {video.views} views · {video.createdAt}
+        </TouchableOpacity>
+
+        <View style={styles.titleBlock}>
+          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+            {video.title}
+          </Text>
+          <View style={styles.metaRow}>
+            <Text style={[styles.meta, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {video.scholar}
+            </Text>
+            <Ionicons name="checkmark-circle" size={11} color={colors.mutedForeground} style={{ marginLeft: 2 }} />
+            <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+              {" "}· {video.views} views · {video.createdAt}
             </Text>
           </View>
         </View>
+
+        <TouchableOpacity
+          style={styles.dotBtn}
+          onPress={() => setMenuVisible(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 0 }}
+        >
+          <Ionicons name="ellipsis-vertical" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
       </View>
+
+      {/* Options menu modal */}
+      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+          <View style={styles.overlay}>
+            <View style={[styles.menu, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              {[
+                { icon: "time-outline" as const, label: "Save to Watch Later" },
+                { icon: "list-outline" as const, label: "Save to Playlist" },
+                { icon: "share-outline" as const, label: "Share" },
+                { icon: "ban-outline" as const, label: "Not interested" },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={styles.menuItem}
+                  onPress={() => setMenuVisible(false)}
+                >
+                  <Ionicons name={item.icon} size={20} color={colors.foreground} />
+                  <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  horizontal: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 12,
-  },
-  thumbnailWrapper: {
+  thumbWrap: {
     width: "100%",
     aspectRatio: 16 / 9,
-    borderRadius: 10,
-    overflow: "hidden",
     position: "relative",
+    backgroundColor: "#E5E5E5",
   },
-  thumbnailHorizontal: {
-    width: 150,
-    aspectRatio: 16 / 9,
-    flexShrink: 0,
-  },
-  thumbnail: {
+  thumbImg: {
     width: "100%",
     height: "100%",
   },
@@ -107,67 +158,107 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 6,
     right: 6,
-    backgroundColor: "rgba(0,0,0,0.78)",
-    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.82)",
+    borderRadius: 3,
     paddingHorizontal: 5,
     paddingVertical: 2,
   },
   durationText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "600",
   },
-  shortsBadge: {
-    position: "absolute",
-    top: 6,
-    left: 6,
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 2,
+    gap: 10,
   },
-  shortsText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginTop: 2,
+    flexShrink: 0,
   },
-  info: {
-    paddingTop: 8,
-    gap: 6,
-  },
-  infoHorizontal: {
+  titleBlock: {
     flex: 1,
-    paddingTop: 0,
+    gap: 3,
   },
   title: {
     fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 19,
+    fontWeight: "500",
+    lineHeight: 20,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "nowrap",
+    overflow: "hidden",
   },
   meta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  metaText: {
-    flex: 1,
-    gap: 1,
-  },
-  scholarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  scholar: {
     fontSize: 12,
-    fontWeight: "500",
+    lineHeight: 17,
   },
-  stats: {
-    fontSize: 11,
+  dotBtn: {
+    padding: 2,
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  horizontal: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+  },
+  thumbHorizontal: {
+    width: 160,
+    aspectRatio: 16 / 9,
+    borderRadius: 4,
+    overflow: "hidden",
+    flexShrink: 0,
+    backgroundColor: "#E5E5E5",
+    position: "relative",
+  },
+  thumbImgHorizontal: {
+    width: "100%",
+    height: "100%",
+  },
+  infoHorizontal: {
+    flex: 1,
+    gap: 3,
+    paddingTop: 2,
+  },
+  titleHorizontal: {
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+  metaSmall: {
+    fontSize: 12,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  menu: {
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    paddingVertical: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  menuLabel: {
+    fontSize: 15,
   },
 });
