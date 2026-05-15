@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Film, MoreVertical } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React from "react";
@@ -21,14 +21,9 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
       onPress={() => router.push(`/playlist/${playlist.id}`)}
     >
       <View style={styles.thumbnailWrapper}>
-        <Image
-          source={playlist.thumbnail}
-          style={styles.thumbnail}
-          contentFit="cover"
-          transition={200}
-        />
+        <Image source={playlist.thumbnail} style={styles.thumbnail} contentFit="cover" transition={200} />
         <View style={[styles.countBadge, { backgroundColor: "rgba(0,0,0,0.65)" }]}>
-          <Feather name="film" size={12} color="#fff" />
+          <Film size={12} color="#fff" strokeWidth={1.8} />
           <Text style={styles.countText}>{playlist.videoCount}</Text>
         </View>
       </View>
@@ -43,7 +38,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
       </View>
 
       <TouchableOpacity style={styles.moreBtn}>
-        <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
+        <MoreVertical size={18} color={colors.mutedForeground} strokeWidth={1.8} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -66,10 +61,7 @@ const styles = StyleSheet.create({
     position: "relative",
     flexShrink: 0,
   },
-  thumbnail: {
-    width: "100%",
-    height: "100%",
-  },
+  thumbnail: { width: "100%", height: "100%" },
   countBadge: {
     position: "absolute",
     bottom: 4,
@@ -81,24 +73,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 2,
   },
-  countText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  info: {
-    flex: 1,
-    gap: 4,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  meta: {
-    fontSize: 12,
-  },
-  moreBtn: {
-    padding: 4,
-  },
+  countText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+  info: { flex: 1, gap: 4 },
+  title: { fontSize: 13, fontWeight: "600", lineHeight: 18 },
+  meta: { fontSize: 12 },
+  moreBtn: { padding: 4 },
 });

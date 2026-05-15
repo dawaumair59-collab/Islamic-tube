@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { BellOff, ChevronLeft } from "lucide-react-native";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -31,14 +31,9 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border },
-        ]}
-      >
+      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+          <ChevronLeft size={24} color={colors.foreground} strokeWidth={2} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Notifications</Text>
         {unreadCount > 0 && (
@@ -48,10 +43,7 @@ export default function NotificationsScreen() {
         )}
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 + bottomPad }}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 + bottomPad }}>
         {unreadCount > 0 && (
           <View style={styles.sectionLabel}>
             <Text style={[styles.sectionText, { color: colors.mutedForeground }]}>
@@ -74,7 +66,7 @@ export default function NotificationsScreen() {
 
         {notifications.length === 0 && (
           <View style={styles.empty}>
-            <Ionicons name="notifications-off-outline" size={52} color={colors.mutedForeground} />
+            <BellOff size={52} color={colors.mutedForeground} strokeWidth={1.5} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No notifications</Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               Subscribe to scholars to receive updates
@@ -99,22 +91,9 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: "700" },
   markAll: { fontSize: 13, fontWeight: "500" },
-  sectionLabel: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  sectionText: {
-    fontSize: 12,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  empty: {
-    alignItems: "center",
-    paddingTop: 80,
-    gap: 8,
-    paddingHorizontal: 40,
-  },
+  sectionLabel: { paddingHorizontal: 16, paddingVertical: 8 },
+  sectionText: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  empty: { alignItems: "center", paddingTop: 80, gap: 8, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 17, fontWeight: "700" },
   emptyText: { fontSize: 14, textAlign: "center" },
 });

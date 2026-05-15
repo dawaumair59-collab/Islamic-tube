@@ -1,11 +1,17 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  ChevronLeft,
+  Eye,
+  Heart,
+  Maximize,
+  Pause,
+  Send,
+  Share2,
+} from "lucide-react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  FlatList,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -40,7 +46,7 @@ export default function LiveScreen() {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color={colors.foreground} />
+          <ChevronLeft size={24} color={colors.foreground} strokeWidth={2} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Live</Text>
         <View style={styles.livePill}>
@@ -53,23 +59,20 @@ export default function LiveScreen() {
         {/* Live player */}
         <View style={styles.playerWrapper}>
           <Image source={activeStream.thumbnail} style={styles.playerThumb} contentFit="cover" />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.3)", "transparent", "rgba(0,0,0,0.7)"]}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={["rgba(0,0,0,0.3)", "transparent", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} />
           <View style={[styles.playerTop, { paddingTop: 12 }]}>
             <View style={styles.liveBadge}>
               <View style={styles.liveDotSmall} />
               <Text style={styles.liveBadgeText}>LIVE</Text>
             </View>
             <View style={styles.viewersBadge}>
-              <Ionicons name="eye" size={12} color="#fff" />
+              <Eye size={12} color="#fff" strokeWidth={2} />
               <Text style={styles.viewersText}>{activeStream.viewers} watching</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.playBtn}>
             <View style={styles.playCircle}>
-              <Ionicons name="pause" size={28} color="#fff" />
+              <Pause size={28} color="#fff" fill="#fff" strokeWidth={0} />
             </View>
           </TouchableOpacity>
           <View style={styles.playerBottom}>
@@ -81,13 +84,13 @@ export default function LiveScreen() {
         {/* Actions */}
         <View style={[styles.actionsRow, { borderBottomColor: colors.border }]}>
           <TouchableOpacity style={styles.actionBtn}>
-            <Ionicons name="heart-outline" size={24} color={colors.foreground} />
+            <Heart size={24} color={colors.foreground} strokeWidth={1.8} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn}>
-            <Feather name="share-2" size={22} color={colors.foreground} />
+            <Share2 size={22} color={colors.foreground} strokeWidth={1.8} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn}>
-            <MaterialCommunityIcons name="fullscreen" size={24} color={colors.foreground} />
+            <Maximize size={24} color={colors.foreground} strokeWidth={1.8} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.subscribeBtn, { backgroundColor: colors.primary }]}>
             <Text style={styles.subscribeBtnText}>Subscribe</Text>
@@ -103,7 +106,6 @@ export default function LiveScreen() {
               <Text style={[styles.chatText, { color: colors.foreground }]}>{msg.message}</Text>
             </View>
           ))}
-
           <View style={[styles.chatInputRow, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
             <TextInput
               style={[styles.chatInput, { color: colors.foreground }]}
@@ -113,12 +115,12 @@ export default function LiveScreen() {
               onChangeText={setChatMsg}
             />
             <TouchableOpacity onPress={() => setChatMsg("")}>
-              <Ionicons name="send" size={20} color={chatMsg ? colors.primary : colors.mutedForeground} />
+              <Send size={20} color={chatMsg ? colors.primary : colors.mutedForeground} strokeWidth={1.8} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Upcoming streams */}
+        {/* More live */}
         <View style={styles.upcomingSection}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>More Live</Text>
           {LIVE_STREAMS.map((stream) => (
@@ -153,12 +155,7 @@ const styles = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#fff" },
   liveDotSmall: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#fff" },
   livePillText: { color: "#fff", fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
-  playerWrapper: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    backgroundColor: "#000",
-    position: "relative",
-  },
+  playerWrapper: { width: "100%", aspectRatio: 16 / 9, backgroundColor: "#000", position: "relative" },
   playerThumb: { width: "100%", height: "100%", position: "absolute" },
   playerTop: {
     position: "absolute",
@@ -206,13 +203,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  playerBottom: {
-    position: "absolute",
-    bottom: 10,
-    left: 12,
-    right: 12,
-    gap: 3,
-  },
+  playerBottom: { position: "absolute", bottom: 10, left: 12, right: 12, gap: 3 },
   streamTitle: { color: "#fff", fontSize: 14, fontWeight: "700" },
   streamScholar: { color: "rgba(255,255,255,0.8)", fontSize: 12 },
   actionsRow: {

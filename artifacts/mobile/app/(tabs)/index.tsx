@@ -1,4 +1,9 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Bell,
+  CircleUser,
+  Moon,
+  Search,
+} from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -50,27 +55,14 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-
+    <View style={styles.screen}>
       {/* Top Navbar */}
-      <View
-        style={[
-          styles.navbar,
-          {
-            paddingTop: topPad + 6,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
+      <View style={[styles.navbar, { paddingTop: topPad + 6 }]}>
         <View style={styles.navLeft}>
-          <MaterialCommunityIcons
-            name="moon-waxing-crescent"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={[styles.navLogo, { color: colors.foreground }]}>
-            <Text style={{ color: colors.primary }}>Islamic</Text>Tube
+          <Moon size={18} color="#2563EB" fill="#2563EB" />
+          <Text style={styles.navLogo}>
+            <Text style={{ color: "#2563EB" }}>Islamic</Text>
+            <Text style={{ color: "#0F0F0F" }}>Tube</Text>
           </Text>
         </View>
         <View style={styles.navRight}>
@@ -78,28 +70,28 @@ export default function HomeScreen() {
             style={styles.navIcon}
             onPress={() => router.push("/(tabs)/search")}
           >
-            <Feather name="search" size={22} color={colors.foreground} />
+            <Search size={22} color="#0F0F0F" strokeWidth={1.8} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navIcon}
             onPress={() => router.push("/notifications")}
           >
-            <Ionicons name="notifications-outline" size={22} color={colors.foreground} />
-            <View style={[styles.notifDot, { backgroundColor: "#FF0000" }]} />
+            <Bell size={22} color="#0F0F0F" strokeWidth={1.8} />
+            <View style={styles.notifDot} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navIcon}
             onPress={() => router.push("/auth")}
           >
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            <View style={styles.avatar}>
               <Text style={styles.avatarText}>A</Text>
             </View>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Category chips — sticky below navbar */}
-      <View style={[styles.chipsBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      {/* Category chips */}
+      <View style={[styles.chipsBar, { borderBottomColor: "#E5E5E5" }]}>
         <CategoryFilter
           categories={CATEGORIES}
           selected={selectedCategory}
@@ -113,14 +105,9 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPad + 80, paddingTop: 8 }}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
         }
       >
-
         {/* First 2 videos */}
         {filteredVideos.slice(0, 2).map((video) => (
           <VideoCard key={video.id} video={video} />
@@ -130,12 +117,12 @@ export default function HomeScreen() {
         {showShorts && (
           <View style={styles.shelf}>
             <View style={styles.shelfHeader}>
-              <View style={styles.shortsLabel}>
-                <View style={[styles.shortsDot, { backgroundColor: colors.destructive }]} />
-                <Text style={[styles.shelfTitle, { color: colors.foreground }]}>Shorts</Text>
+              <View style={styles.shelfLeft}>
+                <View style={styles.shortsDot} />
+                <Text style={styles.shelfTitle}>Shorts</Text>
               </View>
               <TouchableOpacity onPress={() => router.push("/(tabs)/shorts")}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+                <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -150,29 +137,21 @@ export default function HomeScreen() {
                   activeOpacity={0.85}
                   onPress={() => router.push("/(tabs)/shorts")}
                 >
-                  <View style={[styles.shortsThumbWrap, { backgroundColor: colors.card }]}>
-                    <Image
-                      source={s.thumbnail}
-                      style={styles.shortsThumb}
-                      contentFit="cover"
-                    />
-                    <View style={styles.shortsDuration}>
+                  <View style={styles.shortsThumbWrap}>
+                    <Image source={s.thumbnail} style={styles.shortsThumb} contentFit="cover" />
+                    <View style={styles.shortsDurationBadge}>
                       <Text style={styles.shortsDurationText}>{s.duration}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.shortsCardTitle, { color: colors.foreground }]} numberOfLines={2}>
-                    {s.title}
-                  </Text>
-                  <Text style={[styles.shortsViews, { color: colors.mutedForeground }]}>
-                    {s.views} views
-                  </Text>
+                  <Text style={styles.shortsCardTitle} numberOfLines={2}>{s.title}</Text>
+                  <Text style={styles.shortsViews}>{s.views} views</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Middle videos (3 & 4) */}
+        {/* Middle videos */}
         {filteredVideos.slice(2, 4).map((video) => (
           <VideoCard key={video.id} video={video} />
         ))}
@@ -181,12 +160,12 @@ export default function HomeScreen() {
         {showLive && LIVE_STREAMS.filter((l) => l.isLive).length > 0 && (
           <View style={styles.shelf}>
             <View style={styles.shelfHeader}>
-              <View style={styles.liveLabel}>
-                <View style={[styles.liveDot, { backgroundColor: "#FF0000" }]} />
-                <Text style={[styles.shelfTitle, { color: colors.foreground }]}>Live now</Text>
+              <View style={styles.shelfLeft}>
+                <View style={[styles.shortsDot, { backgroundColor: "#FF0000" }]} />
+                <Text style={styles.shelfTitle}>Live now</Text>
               </View>
               <TouchableOpacity onPress={() => router.push("/live")}>
-                <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
+                <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -197,16 +176,12 @@ export default function HomeScreen() {
               {LIVE_STREAMS.filter((l) => l.isLive).map((stream) => (
                 <TouchableOpacity
                   key={stream.id}
-                  style={[styles.liveCard, { backgroundColor: colors.card }]}
+                  style={styles.liveCard}
                   activeOpacity={0.85}
                   onPress={() => router.push("/live")}
                 >
                   <View style={styles.liveThumbWrap}>
-                    <Image
-                      source={stream.thumbnail}
-                      style={styles.liveThumb}
-                      contentFit="cover"
-                    />
+                    <Image source={stream.thumbnail} style={styles.liveThumb} contentFit="cover" />
                     <View style={styles.liveBadge}>
                       <View style={styles.liveBadgeDot} />
                       <Text style={styles.liveBadgeText}>LIVE</Text>
@@ -216,18 +191,10 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <View style={styles.liveInfo}>
-                    <Image
-                      source={stream.scholarAvatar}
-                      style={styles.liveAvatar}
-                      contentFit="cover"
-                    />
+                    <Image source={stream.scholarAvatar} style={styles.liveAvatar} contentFit="cover" />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.liveTitle, { color: colors.foreground }]} numberOfLines={2}>
-                        {stream.title}
-                      </Text>
-                      <Text style={[styles.liveMeta, { color: colors.mutedForeground }]}>
-                        {stream.scholar}
-                      </Text>
+                      <Text style={styles.liveTitle} numberOfLines={2}>{stream.title}</Text>
+                      <Text style={styles.liveMeta}>{stream.scholar}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -240,53 +207,25 @@ export default function HomeScreen() {
         {filteredVideos.slice(4).map((video) => (
           <VideoCard key={video.id} video={video} />
         ))}
-
-        {/* If filtered list is empty */}
-        {filteredVideos.length === 0 && !showShorts && !showLive && (
-          <View style={styles.emptyState}>
-            <Ionicons name="videocam-outline" size={48} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              No videos in this category yet
-            </Text>
-          </View>
-        )}
-
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
   navbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingBottom: 8,
-    zIndex: 10,
+    backgroundColor: "#FFFFFF",
   },
-  navLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  navLogo: {
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: -0.3,
-  },
-  navRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 0,
-  },
-  navIcon: {
-    padding: 8,
-    position: "relative",
-  },
+  navLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+  navLogo: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
+  navRight: { flexDirection: "row", alignItems: "center" },
+  navIcon: { padding: 8, position: "relative" },
   notifDot: {
     position: "absolute",
     top: 7,
@@ -294,6 +233,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
+    backgroundColor: "#FF0000",
     borderWidth: 1.5,
     borderColor: "#fff",
   },
@@ -301,23 +241,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
+    backgroundColor: "#2563EB",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  chipsBar: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  scroll: {
-    flex: 1,
-  },
-  shelf: {
-    marginBottom: 20,
-  },
+  avatarText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  chipsBar: { borderBottomWidth: StyleSheet.hairlineWidth, backgroundColor: "#FFFFFF" },
+  scroll: { flex: 1 },
+  shelf: { marginBottom: 20 },
   shelfHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -325,54 +256,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 10,
   },
-  shortsLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  shortsDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  liveLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  shelfTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  seeAll: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  shortsRow: {
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  shortsCard: {
-    width: SHORTS_CARD_W,
-    gap: 5,
-  },
+  shelfLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+  shortsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#0F0F0F" },
+  shelfTitle: { fontSize: 16, fontWeight: "600", color: "#0F0F0F" },
+  seeAll: { fontSize: 13, fontWeight: "500", color: "#2563EB" },
+  shortsRow: { paddingHorizontal: 12, gap: 8 },
+  shortsCard: { width: SHORTS_CARD_W, gap: 5 },
   shortsThumbWrap: {
     width: SHORTS_CARD_W,
     height: SHORTS_CARD_W * 1.78,
     borderRadius: 6,
     overflow: "hidden",
     position: "relative",
+    backgroundColor: "#E5E5E5",
   },
-  shortsThumb: {
-    width: "100%",
-    height: "100%",
-  },
-  shortsDuration: {
+  shortsThumb: { width: "100%", height: "100%" },
+  shortsDurationBadge: {
     position: "absolute",
     bottom: 5,
     left: 5,
@@ -381,37 +280,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
-  shortsDurationText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  shortsCardTitle: {
-    fontSize: 12,
-    fontWeight: "500",
-    lineHeight: 16,
-  },
-  shortsViews: {
-    fontSize: 11,
-  },
-  liveRow: {
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  liveCard: {
-    width: LIVE_CARD_W,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  liveThumbWrap: {
-    width: LIVE_CARD_W,
-    height: (LIVE_CARD_W * 9) / 16,
-    position: "relative",
-  },
-  liveThumb: {
-    width: "100%",
-    height: "100%",
-  },
+  shortsDurationText: { color: "#fff", fontSize: 10, fontWeight: "600" },
+  shortsCardTitle: { fontSize: 12, fontWeight: "500", lineHeight: 16, color: "#0F0F0F" },
+  shortsViews: { fontSize: 11, color: "#606060" },
+  liveRow: { paddingHorizontal: 12, gap: 10 },
+  liveCard: { width: LIVE_CARD_W, borderRadius: 6, overflow: "hidden", backgroundColor: "#F5F5F5" },
+  liveThumbWrap: { width: LIVE_CARD_W, height: (LIVE_CARD_W * 9) / 16, position: "relative" },
+  liveThumb: { width: "100%", height: "100%" },
   liveBadge: {
     position: "absolute",
     top: 6,
@@ -424,18 +299,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  liveBadgeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#fff",
-  },
-  liveBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-  },
+  liveBadgeDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#fff" },
+  liveBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800", letterSpacing: 0.4 },
   liveViewersPill: {
     position: "absolute",
     bottom: 6,
@@ -445,39 +310,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  liveViewersText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "500",
-  },
-  liveInfo: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 8,
-  },
-  liveAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    flexShrink: 0,
-  },
-  liveTitle: {
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 18,
-  },
-  liveMeta: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 14,
-  },
+  liveViewersText: { color: "#fff", fontSize: 10, fontWeight: "500" },
+  liveInfo: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 8 },
+  liveAvatar: { width: 28, height: 28, borderRadius: 14, flexShrink: 0 },
+  liveTitle: { fontSize: 13, fontWeight: "500", lineHeight: 18, color: "#0F0F0F" },
+  liveMeta: { fontSize: 11, marginTop: 2, color: "#606060" },
 });

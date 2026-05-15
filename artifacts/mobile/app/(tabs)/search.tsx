@@ -1,10 +1,9 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Clock, CornerUpLeft, Search, TrendingUp } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Dimensions,
-  FlatList,
   Platform,
   ScrollView,
   StyleSheet,
@@ -46,15 +45,9 @@ function GridVideoCard({ video }: { video: Video }) {
           <Text style={styles.durationText}>{video.duration}</Text>
         </View>
       </View>
-      <Text style={[styles.gridTitle, { color: colors.foreground }]} numberOfLines={2}>
-        {video.title}
-      </Text>
-      <Text style={[styles.gridMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
-        {video.scholar}
-      </Text>
-      <Text style={[styles.gridMeta, { color: colors.mutedForeground }]}>
-        {video.views} views
-      </Text>
+      <Text style={styles.gridTitle} numberOfLines={2}>{video.title}</Text>
+      <Text style={styles.gridMeta} numberOfLines={1}>{video.scholar}</Text>
+      <Text style={styles.gridMeta}>{video.views} views</Text>
     </TouchableOpacity>
   );
 }
@@ -66,7 +59,7 @@ export default function SearchScreen() {
   const [selectedCat, setSelectedCat] = useState("All");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const bottomPad = Platform.OS === "web" ? 34 : 0;
+  const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
 
   const results =
     query.length > 0
@@ -81,27 +74,16 @@ export default function SearchScreen() {
   const showResults = query.length > 0;
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border },
-        ]}
-      >
-        <SearchBar
-          value={query}
-          onChangeText={setQuery}
-          autoFocus={false}
-        />
+    <View style={styles.screen}>
+      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
+        <SearchBar value={query} onChangeText={setQuery} autoFocus={false} />
       </View>
 
       {showResults ? (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100 + bottomPad }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Category chips horizontal */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -112,19 +94,11 @@ export default function SearchScreen() {
                 key={cat}
                 style={[
                   styles.catChip,
-                  {
-                    backgroundColor: selectedCat === cat ? colors.primary : colors.secondary,
-                    borderColor: selectedCat === cat ? colors.primary : colors.border,
-                  },
+                  { backgroundColor: selectedCat === cat ? "#0F0F0F" : "#F2F2F2" },
                 ]}
                 onPress={() => setSelectedCat(cat)}
               >
-                <Text
-                  style={[
-                    styles.catChipText,
-                    { color: selectedCat === cat ? "#fff" : colors.foreground },
-                  ]}
-                >
+                <Text style={[styles.catChipText, { color: selectedCat === cat ? "#fff" : "#0F0F0F" }]}>
                   {cat}
                 </Text>
               </TouchableOpacity>
@@ -133,19 +107,13 @@ export default function SearchScreen() {
 
           {results.length === 0 ? (
             <View style={styles.emptyState}>
-              <Feather name="search" size={48} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                No results found
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Try searching with different keywords
-              </Text>
+              <Search size={48} color="#909090" strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>No results found</Text>
+              <Text style={styles.emptyText}>Try searching with different keywords</Text>
             </View>
           ) : (
             <>
-              <Text style={[styles.resultCount, { color: colors.mutedForeground }]}>
-                {results.length} results for "{query}"
-              </Text>
+              <Text style={styles.resultCount}>{results.length} results for "{query}"</Text>
               <View style={styles.grid}>
                 {results.map((video) => (
                   <GridVideoCard key={video.id} video={video} />
@@ -156,18 +124,15 @@ export default function SearchScreen() {
         </ScrollView>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100 + bottomPad }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Search history */}
           {SEARCH_HISTORY.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  Recent searches
-                </Text>
+                <Text style={styles.sectionTitle}>Recent searches</Text>
                 <TouchableOpacity>
-                  <Text style={[styles.clearAll, { color: colors.primary }]}>Clear all</Text>
+                  <Text style={styles.clearAll}>Clear all</Text>
                 </TouchableOpacity>
               </View>
               {SEARCH_HISTORY.map((item) => (
@@ -176,38 +141,32 @@ export default function SearchScreen() {
                   style={styles.historyItem}
                   onPress={() => setQuery(item)}
                 >
-                  <Ionicons name="time-outline" size={18} color={colors.mutedForeground} />
-                  <Text style={[styles.historyText, { color: colors.foreground }]}>{item}</Text>
-                  <Feather name="arrow-up-left" size={16} color={colors.mutedForeground} />
+                  <Clock size={18} color="#909090" strokeWidth={1.8} />
+                  <Text style={styles.historyText}>{item}</Text>
+                  <CornerUpLeft size={16} color="#909090" strokeWidth={1.8} />
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Trending */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Trending
-            </Text>
+            <Text style={styles.sectionTitle}>Trending</Text>
             <View style={styles.trendingGrid}>
-              {TRENDING_SEARCHES.map((t, i) => (
+              {TRENDING_SEARCHES.map((t) => (
                 <TouchableOpacity
                   key={t}
-                  style={[styles.trendingChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                  style={styles.trendingChip}
                   onPress={() => setQuery(t)}
                 >
-                  <Feather name="trending-up" size={13} color={colors.primary} />
-                  <Text style={[styles.trendingText, { color: colors.foreground }]}>{t}</Text>
+                  <TrendingUp size={13} color="#2563EB" strokeWidth={2} />
+                  <Text style={styles.trendingText}>{t}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {/* Browse Categories */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Browse categories
-            </Text>
+            <Text style={styles.sectionTitle}>Browse categories</Text>
             <View style={styles.categoryGrid}>
               {CATEGORIES.slice(1).map((cat, i) => {
                 const hues = [
@@ -215,11 +174,10 @@ export default function SearchScreen() {
                   "#D97706", "#0891B2", "#BE185D", "#1D4ED8",
                   "#065F46", "#92400E", "#1E40AF",
                 ];
-                const bg = hues[i % hues.length];
                 return (
                   <TouchableOpacity
                     key={cat}
-                    style={[styles.categoryCard, { backgroundColor: bg }]}
+                    style={[styles.categoryCard, { backgroundColor: hues[i % hues.length] }]}
                     onPress={() => setQuery(cat)}
                   >
                     <Text style={styles.categoryCardText}>{cat}</Text>
@@ -235,55 +193,29 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
+  screen: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     paddingHorizontal: 16,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E5E5E5",
+    backgroundColor: "#FFFFFF",
   },
-  catRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  catChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  catChipText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  resultCount: {
-    paddingHorizontal: 16,
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  gridCard: {
-    gap: 5,
-    marginBottom: 4,
-  },
+  catRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  catChipText: { fontSize: 12, fontWeight: "500" },
+  resultCount: { paddingHorizontal: 16, fontSize: 12, marginBottom: 8, color: "#606060" },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8 },
+  gridCard: { gap: 5, marginBottom: 4 },
   gridThumbWrapper: {
     width: "100%",
     aspectRatio: 16 / 9,
     borderRadius: 8,
     overflow: "hidden",
     position: "relative",
+    backgroundColor: "#E5E5E5",
   },
-  gridThumb: {
-    width: "100%",
-    height: "100%",
-  },
+  gridThumb: { width: "100%", height: "100%" },
   durationBadge: {
     position: "absolute",
     bottom: 4,
@@ -293,66 +225,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
-  durationText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  gridTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
-  },
-  gridMeta: {
-    fontSize: 11,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 8,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: "center",
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 10,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  clearAll: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  historyItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-  },
-  historyText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  trendingGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  durationText: { color: "#fff", fontSize: 10, fontWeight: "600" },
+  gridTitle: { fontSize: 12, fontWeight: "600", lineHeight: 16, color: "#0F0F0F" },
+  gridMeta: { fontSize: 11, color: "#606060" },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 8, paddingHorizontal: 40 },
+  emptyTitle: { fontSize: 17, fontWeight: "700", color: "#0F0F0F" },
+  emptyText: { fontSize: 14, textAlign: "center", color: "#606060" },
+  section: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: "#0F0F0F" },
+  clearAll: { fontSize: 13, fontWeight: "500", color: "#2563EB" },
+  historyItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
+  historyText: { flex: 1, fontSize: 14, color: "#0F0F0F" },
+  trendingGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   trendingChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -361,15 +246,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
+    borderColor: "#E5E5E5",
+    backgroundColor: "#F5F5F5",
   },
-  trendingText: {
-    fontSize: 13,
-  },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  trendingText: { fontSize: 13, color: "#0F0F0F" },
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   categoryCard: {
     width: (SCREEN_WIDTH - 32 - 8) / 2,
     paddingVertical: 18,
@@ -377,9 +258,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "flex-end",
   },
-  categoryCardText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  categoryCardText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 });

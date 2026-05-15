@@ -8,7 +8,8 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -43,14 +44,20 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      SplashScreen.hideAsync();
+    }
+  }, []);
+
+  // On native, wait for fonts. On web, render immediately (fonts load in background).
+  if (Platform.OS !== "web" && !fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
@@ -59,9 +66,13 @@ export default function RootLayout() {
           <ThemeProvider>
             <AuthProvider>
               <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
+                {Platform.OS === "web" ? (
                   <RootLayoutNav />
-                </KeyboardProvider>
+                ) : (
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                )}
               </GestureHandlerRootView>
             </AuthProvider>
           </ThemeProvider>

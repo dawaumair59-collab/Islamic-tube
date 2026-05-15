@@ -1,4 +1,4 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { ChevronLeft, MoreVertical, Play, Share2, Shuffle } from "lucide-react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -31,39 +31,31 @@ export default function PlaylistScreen() {
         {/* Header banner */}
         <View style={styles.bannerWrapper}>
           <Image source={playlist.thumbnail} style={styles.banner} contentFit="cover" />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.8)"]}
-            style={StyleSheet.absoluteFill}
-          />
-          <TouchableOpacity
-            style={[styles.backBtn, { paddingTop: topPad + 8 }]}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#fff" />
+          <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.8)"]} style={StyleSheet.absoluteFill} />
+          <TouchableOpacity style={[styles.backBtn, { paddingTop: topPad + 8 }]} onPress={() => router.back()}>
+            <ChevronLeft size={24} color="#fff" strokeWidth={2} />
           </TouchableOpacity>
           <View style={styles.bannerInfo}>
             <Text style={styles.bannerTitle}>{playlist.title}</Text>
-            <Text style={styles.bannerMeta}>
-              {playlist.videoCount} videos · {playlist.createdAt}
-            </Text>
+            <Text style={styles.bannerMeta}>{playlist.videoCount} videos · {playlist.createdAt}</Text>
           </View>
         </View>
 
         {/* Actions */}
         <View style={[styles.actionsRow, { borderBottomColor: colors.border }]}>
           <TouchableOpacity style={[styles.playAllBtn, { backgroundColor: colors.primary }]}>
-            <Ionicons name="play" size={18} color="#fff" />
+            <Play size={16} color="#fff" fill="#fff" strokeWidth={0} />
             <Text style={styles.playAllText}>Play All</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.shuffleBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Ionicons name="shuffle" size={18} color={colors.foreground} />
+            <Shuffle size={16} color={colors.foreground} strokeWidth={1.8} />
             <Text style={[styles.shuffleText, { color: colors.foreground }]}>Shuffle</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn}>
-            <Feather name="share-2" size={20} color={colors.foreground} />
+            <Share2 size={20} color={colors.foreground} strokeWidth={1.8} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn}>
-            <MaterialCommunityIcons name="dots-vertical" size={20} color={colors.foreground} />
+            <MoreVertical size={20} color={colors.foreground} strokeWidth={1.8} />
           </TouchableOpacity>
         </View>
 
@@ -71,9 +63,7 @@ export default function PlaylistScreen() {
         <View style={styles.feed}>
           {VIDEOS.map((video, index) => (
             <View key={video.id} style={styles.videoWrapper}>
-              <Text style={[styles.index, { color: colors.mutedForeground }]}>
-                {index + 1}
-              </Text>
+              <Text style={[styles.index, { color: colors.mutedForeground }]}>{index + 1}</Text>
               <View style={styles.videoCard}>
                 <VideoCard video={video} horizontal />
               </View>
@@ -89,19 +79,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   bannerWrapper: { width: "100%", height: 220, position: "relative" },
   banner: { width: "100%", height: "100%" },
-  backBtn: {
-    position: "absolute",
-    left: 12,
-    top: 0,
-    padding: 6,
-  },
-  bannerInfo: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
-    gap: 4,
-  },
+  backBtn: { position: "absolute", left: 12, top: 0, padding: 6 },
+  bannerInfo: { position: "absolute", bottom: 16, left: 16, right: 16, gap: 4 },
   bannerTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
   bannerMeta: { color: "rgba(255,255,255,0.8)", fontSize: 13 },
   actionsRow: {
@@ -133,12 +112,7 @@ const styles = StyleSheet.create({
   shuffleText: { fontWeight: "600", fontSize: 14 },
   iconBtn: { marginLeft: "auto", padding: 6 },
   feed: { padding: 16, gap: 4 },
-  videoWrapper: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    marginBottom: 8,
-  },
+  videoWrapper: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginBottom: 8 },
   index: { fontSize: 14, fontWeight: "600", paddingTop: 10, width: 20, textAlign: "center" },
   videoCard: { flex: 1 },
 });

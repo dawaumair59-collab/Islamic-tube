@@ -1,5 +1,11 @@
 import { Tabs } from "expo-router";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  Clapperboard,
+  Home,
+  Plus,
+  Users,
+  CircleUser,
+} from "lucide-react-native";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,7 +18,6 @@ const BORDER = "#E5E5E5";
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const isWeb = Platform.OS === "web";
-  const isIOS = Platform.OS === "ios";
 
   const tabBarHeight = isWeb ? 56 : 50 + insets.bottom;
 
@@ -43,33 +48,37 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, focused }) =>
-            focused ? (
-              <Ionicons name="home" size={24} color={color} />
-            ) : (
-              <Ionicons name="home-outline" size={24} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <Home
+              size={23}
+              color={color}
+              fill={focused ? color : "transparent"}
+              strokeWidth={focused ? 2 : 1.8}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="shorts"
         options={{
           title: "Shorts",
-          tabBarIcon: ({ color, focused }) =>
-            focused ? (
-              <MaterialCommunityIcons name="play-box" size={24} color={color} />
-            ) : (
-              <MaterialCommunityIcons name="play-box-outline" size={24} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <Clapperboard
+              size={23}
+              color={color}
+              fill={focused ? color : "transparent"}
+              strokeWidth={focused ? 2 : 1.8}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Create",
-          tabBarIcon: ({ color }) => (
+          tabBarIcon: () => (
             <View style={styles.createIcon}>
-              <Feather name="plus" size={18} color="#0F0F0F" />
+              <Plus size={18} color="#0F0F0F" strokeWidth={2} />
             </View>
           ),
         }}
@@ -78,24 +87,28 @@ export default function TabLayout() {
         name="library"
         options={{
           title: "Subscriptions",
-          tabBarIcon: ({ color, focused }) =>
-            focused ? (
-              <Ionicons name="people" size={24} color={color} />
-            ) : (
-              <Ionicons name="people-outline" size={24} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <Users
+              size={23}
+              color={color}
+              fill={focused ? color : "transparent"}
+              strokeWidth={focused ? 2 : 1.8}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "You",
-          tabBarIcon: ({ color, focused }) =>
-            focused ? (
-              <Ionicons name="person-circle" size={24} color={color} />
-            ) : (
-              <Ionicons name="person-circle-outline" size={24} color={color} />
-            ),
+          tabBarIcon: ({ color, focused }) => (
+            <CircleUser
+              size={23}
+              color={color}
+              fill={focused ? color : "transparent"}
+              strokeWidth={focused ? 2 : 1.8}
+            />
+          ),
         }}
       />
     </Tabs>
@@ -104,7 +117,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   createIcon: {
-    width: 34,
+    width: 36,
     height: 24,
     backgroundColor: "#F2F2F2",
     borderRadius: 6,

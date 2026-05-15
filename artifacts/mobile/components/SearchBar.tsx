@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Mic, Search, XCircle } from "lucide-react-native";
 import React from "react";
 import {
   StyleSheet,
@@ -29,8 +29,8 @@ export function SearchBar({
   const colors = useColors();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-      <Feather name="search" size={18} color={colors.mutedForeground} />
+    <View style={styles.container}>
+      <Search size={18} color={colors.mutedForeground} strokeWidth={1.8} />
       <TextInput
         style={[styles.input, { color: colors.foreground }]}
         value={value}
@@ -45,12 +45,12 @@ export function SearchBar({
       />
       {value.length > 0 ? (
         <TouchableOpacity onPress={() => onChangeText("")}>
-          <Ionicons name="close-circle" size={18} color={colors.mutedForeground} />
+          <XCircle size={18} color={colors.mutedForeground} strokeWidth={1.8} />
         </TouchableOpacity>
       ) : (
         onVoice && (
           <TouchableOpacity onPress={onVoice}>
-            <Feather name="mic" size={18} color={colors.mutedForeground} />
+            <Mic size={18} color={colors.mutedForeground} strokeWidth={1.8} />
           </TouchableOpacity>
         )
       )}
@@ -67,6 +67,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
+    backgroundColor: "#F5F5F5",
+    borderColor: "#E5E5E5",
   },
   input: {
     flex: 1,

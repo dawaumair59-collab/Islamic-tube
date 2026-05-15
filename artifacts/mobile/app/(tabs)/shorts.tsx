@@ -1,4 +1,14 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  BadgeCheck,
+  Camera,
+  Check,
+  ChevronLeft,
+  Heart,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Share2,
+} from "lucide-react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -18,7 +28,6 @@ import Animated, {
   useSharedValue,
   withSequence,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -69,11 +78,11 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={26} color="#fff" />
+          <ChevronLeft size={26} color="#fff" strokeWidth={2} />
         </TouchableOpacity>
         <Text style={styles.shortsLabel}>Shorts</Text>
         <TouchableOpacity>
-          <Feather name="camera" size={22} color="#fff" />
+          <Camera size={22} color="#fff" strokeWidth={1.8} />
         </TouchableOpacity>
       </View>
 
@@ -89,19 +98,20 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
             onPress={() => setFollowing((f) => !f)}
           >
             {following ? (
-              <Ionicons name="checkmark" size={10} color="#fff" />
+              <Check size={10} color="#fff" strokeWidth={3} />
             ) : (
-              <Ionicons name="add" size={10} color="#fff" />
+              <Plus size={10} color="#fff" strokeWidth={3} />
             )}
           </TouchableOpacity>
         </View>
 
         <Animated.View style={likeAnimStyle}>
           <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
-            <Ionicons
-              name={liked ? "heart" : "heart-outline"}
+            <Heart
               size={30}
               color={liked ? "#EF4444" : "#fff"}
+              fill={liked ? "#EF4444" : "transparent"}
+              strokeWidth={1.8}
             />
             <Text style={styles.actionCount}>
               {likes >= 1000 ? `${(likes / 1000).toFixed(0)}K` : likes}
@@ -110,17 +120,17 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
         </Animated.View>
 
         <TouchableOpacity style={styles.actionBtn}>
-          <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
+          <MessageCircle size={28} color="#fff" strokeWidth={1.8} />
           <Text style={styles.actionCount}>892</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionBtn}>
-          <Feather name="share-2" size={26} color="#fff" />
+          <Share2 size={26} color="#fff" strokeWidth={1.8} />
           <Text style={styles.actionCount}>Share</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionBtn}>
-          <MaterialCommunityIcons name="dots-horizontal" size={26} color="#fff" />
+          <MoreHorizontal size={26} color="#fff" strokeWidth={1.8} />
         </TouchableOpacity>
       </View>
 
@@ -128,10 +138,10 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
       <View style={[styles.bottomInfo, { paddingBottom: bottomPad }]}>
         <TouchableOpacity
           onPress={() => router.push(`/channel/${item.scholarId}`)}
-          style={styles.scholarName}
+          style={styles.scholarNameRow}
         >
           <Text style={styles.scholarText}>{item.scholar}</Text>
-          <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+          <BadgeCheck size={14} color={colors.primary} fill={colors.primary} strokeWidth={0} />
         </TouchableOpacity>
         <Text style={styles.shortTitle} numberOfLines={2}>{item.title}</Text>
         <Text style={styles.shortDescription} numberOfLines={1}>{item.description}</Text>
@@ -180,19 +190,9 @@ export default function ShortsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    position: "relative",
-  },
-  background: {
-    width: "100%",
-    height: "100%",
-    position: "absolute",
-  },
+  container: { flex: 1, backgroundColor: "#000" },
+  slide: { width: SCREEN_WIDTH, position: "relative" },
+  background: { width: "100%", height: "100%", position: "absolute" },
   topBar: {
     position: "absolute",
     top: 0,
@@ -204,20 +204,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 10,
   },
-  shortsLabel: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
+  shortsLabel: { color: "#fff", fontSize: 17, fontWeight: "700" },
   actions: {
     position: "absolute",
     right: 12,
     alignItems: "center",
     gap: 20,
   },
-  scholarAvatarWrapper: {
-    position: "relative",
-  },
+  scholarAvatarWrapper: { position: "relative" },
   scholarAvatar: {
     width: 44,
     height: 44,
@@ -237,17 +231,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#fff",
   },
-  actionBtn: {
-    alignItems: "center",
-    gap: 3,
-  },
+  actionBtn: { alignItems: "center", gap: 3 },
   actionCount: {
     color: "#fff",
     fontSize: 12,
     fontWeight: "600",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   bottomInfo: {
     position: "absolute",
@@ -257,35 +245,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 5,
   },
-  scholarName: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  scholarText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  shortTitle: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
-    lineHeight: 20,
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  shortDescription: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 13,
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
+  scholarNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  scholarText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  shortTitle: { color: "#fff", fontSize: 15, fontWeight: "600", lineHeight: 20 },
+  shortDescription: { color: "rgba(255,255,255,0.85)", fontSize: 13 },
   categoryTag: {
     backgroundColor: "rgba(37,99,235,0.85)",
     borderRadius: 20,
@@ -293,9 +256,5 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     alignSelf: "flex-start",
   },
-  categoryTagText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "600",
-  },
+  categoryTagText: { color: "#fff", fontSize: 11, fontWeight: "600" },
 });

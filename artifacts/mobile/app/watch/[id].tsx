@@ -1,4 +1,19 @@
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  BadgeCheck,
+  Bookmark,
+  Cast,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Maximize,
+  MessageCircle,
+  MoreVertical,
+  Pause,
+  Play,
+  Settings,
+  Share2,
+  ThumbsUp,
+} from "lucide-react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -45,13 +60,10 @@ export default function WatchScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+
         {/* Video Player */}
         <View style={styles.playerWrapper}>
-          <Image
-            source={video.thumbnail}
-            style={styles.playerThumb}
-            contentFit="cover"
-          />
+          <Image source={video.thumbnail} style={styles.playerThumb} contentFit="cover" />
           <LinearGradient
             colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.6)"]}
             style={StyleSheet.absoluteFill}
@@ -60,30 +72,26 @@ export default function WatchScreen() {
           {/* Top controls */}
           <View style={[styles.playerTop, { paddingTop: topPad + 4 }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="chevron-down" size={24} color="#fff" />
+              <ChevronDown size={24} color="#fff" strokeWidth={2} />
             </TouchableOpacity>
             <View style={styles.playerTopRight}>
               <TouchableOpacity style={styles.playerIconBtn}>
-                <Feather name="cast" size={20} color="#fff" />
+                <Cast size={20} color="#fff" strokeWidth={1.8} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.playerIconBtn}>
-                <MaterialCommunityIcons name="dots-vertical" size={20} color="#fff" />
+                <MoreVertical size={20} color="#fff" strokeWidth={1.8} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Center play */}
-          <TouchableOpacity
-            style={styles.playCenter}
-            onPress={() => setIsPlaying((p) => !p)}
-          >
+          {/* Center play/pause */}
+          <TouchableOpacity style={styles.playCenter} onPress={() => setIsPlaying((p) => !p)}>
             <View style={styles.playCircle}>
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={32}
-                color="#fff"
-                style={{ marginLeft: isPlaying ? 0 : 3 }}
-              />
+              {isPlaying ? (
+                <Pause size={32} color="#fff" fill="#fff" strokeWidth={0} />
+              ) : (
+                <Play size={32} color="#fff" fill="#fff" strokeWidth={0} style={{ marginLeft: 3 }} />
+              )}
             </View>
           </TouchableOpacity>
 
@@ -96,10 +104,10 @@ export default function WatchScreen() {
               <Text style={styles.timeText}>15:42 / {video.duration}</Text>
               <View style={styles.rightControls}>
                 <TouchableOpacity style={styles.playerIconBtn}>
-                  <Feather name="settings" size={18} color="#fff" />
+                  <Settings size={18} color="#fff" strokeWidth={1.8} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.playerIconBtn}>
-                  <MaterialCommunityIcons name="fullscreen" size={20} color="#fff" />
+                  <Maximize size={20} color="#fff" strokeWidth={1.8} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -107,15 +115,11 @@ export default function WatchScreen() {
         </View>
 
         <View style={styles.content}>
-          {/* Title */}
           <Text style={[styles.title, { color: colors.foreground }]}>{video.title}</Text>
 
-          {/* Stats */}
-          <View style={styles.statsRow}>
-            <Text style={[styles.statsText, { color: colors.mutedForeground }]}>
-              {video.views} views · {video.createdAt}
-            </Text>
-          </View>
+          <Text style={[styles.statsText, { color: colors.mutedForeground }]}>
+            {video.views} views · {video.createdAt}
+          </Text>
 
           {/* Action buttons */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actions}>
@@ -123,29 +127,34 @@ export default function WatchScreen() {
               style={[styles.actionBtn, { backgroundColor: liked ? colors.accent : colors.secondary }]}
               onPress={handleLike}
             >
-              <Ionicons name={liked ? "thumbs-up" : "thumbs-up-outline"} size={18} color={liked ? colors.primary : colors.foreground} />
+              <ThumbsUp
+                size={18}
+                color={liked ? colors.primary : colors.foreground}
+                fill={liked ? colors.primary : "transparent"}
+                strokeWidth={1.8}
+              />
               <Text style={[styles.actionLabel, { color: liked ? colors.primary : colors.foreground }]}>
                 {likes >= 1000 ? `${(likes / 1000).toFixed(0)}K` : likes}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <Ionicons name="chatbubble-outline" size={18} color={colors.foreground} />
+              <MessageCircle size={18} color={colors.foreground} strokeWidth={1.8} />
               <Text style={[styles.actionLabel, { color: colors.foreground }]}>Comment</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <Feather name="share-2" size={18} color={colors.foreground} />
+              <Share2 size={18} color={colors.foreground} strokeWidth={1.8} />
               <Text style={[styles.actionLabel, { color: colors.foreground }]}>Share</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <Feather name="bookmark" size={18} color={colors.foreground} />
+              <Bookmark size={18} color={colors.foreground} strokeWidth={1.8} />
               <Text style={[styles.actionLabel, { color: colors.foreground }]}>Save</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <MaterialCommunityIcons name="download-outline" size={18} color={colors.foreground} />
+              <Download size={18} color={colors.foreground} strokeWidth={1.8} />
               <Text style={[styles.actionLabel, { color: colors.foreground }]}>Download</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -159,7 +168,7 @@ export default function WatchScreen() {
             <View style={styles.scholarInfo}>
               <View style={styles.scholarNameRow}>
                 <Text style={[styles.scholarName, { color: colors.foreground }]}>{video.scholar}</Text>
-                <Ionicons name="checkmark-circle" size={15} color={colors.primary} />
+                <BadgeCheck size={15} color={colors.primary} fill={colors.primary} strokeWidth={0} />
               </View>
               <Text style={[styles.subscriberCount, { color: colors.mutedForeground }]}>
                 {video.subscribers} subscribers
@@ -196,19 +205,16 @@ export default function WatchScreen() {
             style={[styles.commentsToggle, { borderColor: colors.border }]}
             onPress={() => setShowComments((s) => !s)}
           >
-            <Text style={[styles.commentsToggleText, { color: colors.foreground }]}>
-              Comments (892)
-            </Text>
-            <Ionicons
-              name={showComments ? "chevron-up" : "chevron-down"}
-              size={20}
-              color={colors.mutedForeground}
-            />
+            <Text style={[styles.commentsToggleText, { color: colors.foreground }]}>Comments (892)</Text>
+            {showComments ? (
+              <ChevronUp size={20} color={colors.mutedForeground} strokeWidth={1.8} />
+            ) : (
+              <ChevronDown size={20} color={colors.mutedForeground} strokeWidth={1.8} />
+            )}
           </TouchableOpacity>
 
           {showComments && <CommentSection />}
 
-          {/* Related videos */}
           <Text style={[styles.relatedTitle, { color: colors.foreground }]}>Related Videos</Text>
           {related.map((v) => (
             <VideoCard key={v.id} video={v} horizontal />
@@ -220,20 +226,14 @@ export default function WatchScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
+  screen: { flex: 1 },
   playerWrapper: {
     width: "100%",
     aspectRatio: 16 / 9,
     backgroundColor: "#000",
     position: "relative",
   },
-  playerThumb: {
-    width: "100%",
-    height: "100%",
-    position: "absolute",
-  },
+  playerThumb: { width: "100%", height: "100%", position: "absolute" },
   playerTop: {
     position: "absolute",
     top: 0,
@@ -244,16 +244,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
   },
-  backBtn: {
-    padding: 4,
-  },
-  playerTopRight: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  playerIconBtn: {
-    padding: 6,
-  },
+  backBtn: { padding: 4 },
+  playerTopRight: { flexDirection: "row", gap: 8 },
+  playerIconBtn: { padding: 6 },
   playCenter: {
     position: "absolute",
     top: 0,
@@ -279,48 +272,19 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 6,
   },
-  progressBar: {
-    height: 3,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 2,
-  },
+  progressBar: { height: 3, borderRadius: 2, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 2 },
   playerControls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  timeText: {
-    color: "#fff",
-    fontSize: 12,
-  },
-  rightControls: {
-    flexDirection: "row",
-    gap: 4,
-  },
-  content: {
-    padding: 16,
-    gap: 14,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    lineHeight: 22,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statsText: {
-    fontSize: 13,
-  },
-  actions: {
-    gap: 8,
-    paddingVertical: 2,
-  },
+  timeText: { color: "#fff", fontSize: 12 },
+  rightControls: { flexDirection: "row", gap: 4 },
+  content: { padding: 16, gap: 14 },
+  title: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
+  statsText: { fontSize: 13 },
+  actions: { gap: 8, paddingVertical: 2 },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -329,10 +293,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 24,
   },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
+  actionLabel: { fontSize: 13, fontWeight: "500" },
   scholarCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -341,50 +302,21 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  scholarAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  scholarInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  scholarNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  scholarName: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  subscriberCount: {
-    fontSize: 12,
-  },
-  subscribeBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-  },
-  subscribeBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  scholarAvatar: { width: 44, height: 44, borderRadius: 22 },
+  scholarInfo: { flex: 1, gap: 2 },
+  scholarNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  scholarName: { fontSize: 14, fontWeight: "700" },
+  subscriberCount: { fontSize: 12 },
+  subscribeBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  subscribeBtnText: { fontSize: 13, fontWeight: "700" },
   descCard: {
     padding: 12,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
     gap: 6,
   },
-  descText: {
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  descToggle: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  descText: { fontSize: 13, lineHeight: 19 },
+  descToggle: { fontSize: 13, fontWeight: "600" },
   commentsToggle: {
     flexDirection: "row",
     alignItems: "center",
@@ -393,13 +325,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  commentsToggleText: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  relatedTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: 4,
-  },
+  commentsToggleText: { fontSize: 15, fontWeight: "700" },
+  relatedTitle: { fontSize: 15, fontWeight: "700", marginTop: 4 },
 });
