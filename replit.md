@@ -1,6 +1,6 @@
-# [Project name]
+# IslamicTube
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A professional Islamic video streaming mobile app inspired by YouTube and TikTok, built with Expo/React Native.
 
 ## Run & Operate
 
@@ -14,6 +14,7 @@ _Replace the heading above with the project's name, and this line with one sente
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Mobile: Expo + React Native + Expo Router
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
@@ -22,23 +23,51 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mobile/` — Expo mobile app
+- `artifacts/mobile/app/` — Expo Router file-based screens
+- `artifacts/mobile/components/` — Shared UI components
+- `artifacts/mobile/context/` — React Context providers (Auth, Theme)
+- `artifacts/mobile/data/mockData.ts` — All mock data (videos, scholars, playlists, etc.)
+- `artifacts/mobile/constants/colors.ts` — Brand color tokens
+- `artifacts/api-server/` — Express API server
+- `lib/api-spec/openapi.yaml` — OpenAPI contract
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Frontend-only for first build — all data uses mock data, no backend DB needed
+- Expo Router file-based navigation (similar to Next.js Pages Router)
+- ThemeContext for light/dark mode toggle persisted to AsyncStorage
+- AuthContext for mock auth (login/logout/register)
+- Colors from `constants/colors.ts` via `useColors()` hook — never hardcoded
+- Reanimated for smooth animations (like button, progress bars)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+IslamicTube is a premium Islamic video streaming app featuring:
+- Home feed with hero banner, live indicator, category filters
+- YouTube Shorts-inspired vertical Shorts feed
+- Video Watch screen with player controls and comments
+- Scholar Channel profiles
+- Library with playlists, watch history, saved videos
+- Live streaming screen with chat
+- Scholar video upload flow
+- Full auth (login/register/Google) flow
+- Dark/light theme toggle
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Blue (#2563EB) primary brand color
+- Light mode default, dark mode supported
+- Islamic design elements (crescent moon logo, geometric patterns)
+- No emojis anywhere in the UI
+- Icon buttons preferred over text buttons
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Mock API base URL configured as http://localhost:8000/api (axio services reference only, not active)
+- Uses expo-image for all image rendering (not React Native's Image)
+- useAnimatedStyle must never be called inside .map() — extract to component
+- Web safe area: 67px top, 84px bottom tab bar
 
 ## Pointers
 

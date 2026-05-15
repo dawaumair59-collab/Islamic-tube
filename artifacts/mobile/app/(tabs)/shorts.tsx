@@ -1,0 +1,301 @@
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
+import {
+  Dimensions,
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewToken,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { SHORTS, Video } from "@/data/mockData";
+import { useColors } from "@/hooks/useColors";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(item.likes);
+  const [following, setFollowing] = useState(false);
+
+  const likeScale = useSharedValue(1);
+
+  const likeAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: likeScale.value }],
+  }));
+
+  const handleLike = () => {
+    setLiked((prev) => {
+      setLikes((l) => (prev ? l - 1 : l + 1));
+      return !prev;
+    });
+    likeScale.value = withSequence(
+      withSpring(1.4, { damping: 6 }),
+      withSpring(1, { damping: 8 })
+    );
+  };
+
+  const bottomPad = Platform.OS === "web" ? 84 + 34 : 90 + insets.bottom;
+
+  return (
+    <View style={[styles.slide, { height: SCREEN_HEIGHT }]}>
+      <Image
+        source={item.thumbnail}
+        style={styles.background}
+        contentFit="cover"
+        transition={300}
+      />
+      <LinearGradient
+        colors={["rgba(0,0,0,0.15)", "transparent", "rgba(0,0,0,0.75)"]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={26} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.shortsLabel}>Shorts</Text>
+        <TouchableOpacity>
+          <Feather name="camera" size={22} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Right action buttons */}
+      <View style={[styles.actions, { bottom: bottomPad + 60 }]}>
+        <View style={styles.scholarAvatarWrapper}>
+          <Image source={item.scholarAvatar} style={styles.scholarAvatar} contentFit="cover" />
+          <TouchableOpacity
+            style={[
+              styles.followBtn,
+              { backgroundColor: following ? colors.mutedForeground : colors.primary },
+            ]}
+            onPress={() => setFollowing((f) => !f)}
+          >
+            {following ? (
+              <Ionicons name="checkmark" size={10} color="#fff" />
+            ) : (
+              <Ionicons name="add" size={10} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <Animated.View style={likeAnimStyle}>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={30}
+              color={liked ? "#EF4444" : "#fff"}
+            />
+            <Text style={styles.actionCount}>
+              {likes >= 1000 ? `${(likes / 1000).toFixed(0)}K` : likes}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <TouchableOpacity style={styles.actionBtn}>
+          <Ionicons name="chatbubble-ellipses-outline" size={28} color="#fff" />
+          <Text style={styles.actionCount}>892</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionBtn}>
+          <Feather name="share-2" size={26} color="#fff" />
+          <Text style={styles.actionCount}>Share</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionBtn}>
+          <MaterialCommunityIcons name="dots-horizontal" size={26} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom info */}
+      <View style={[styles.bottomInfo, { paddingBottom: bottomPad }]}>
+        <TouchableOpacity
+          onPress={() => router.push(`/channel/${item.scholarId}`)}
+          style={styles.scholarName}
+        >
+          <Text style={styles.scholarText}>{item.scholar}</Text>
+          <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.shortTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.shortDescription} numberOfLines={1}>{item.description}</Text>
+        <View style={styles.categoryTag}>
+          <Text style={styles.categoryTagText}>{item.category}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default function ShortsScreen() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+        setActiveIndex(viewableItems[0].index);
+      }
+    },
+    []
+  );
+
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={SHORTS}
+        keyExtractor={(item) => item.id}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig.current}
+        renderItem={({ item, index }) => (
+          <ShortItem item={item} isActive={index === activeIndex} />
+        )}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_HEIGHT,
+          offset: SCREEN_HEIGHT * index,
+          index,
+        })}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  slide: {
+    width: SCREEN_WIDTH,
+    position: "relative",
+  },
+  background: {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+  },
+  topBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  shortsLabel: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  actions: {
+    position: "absolute",
+    right: 12,
+    alignItems: "center",
+    gap: 20,
+  },
+  scholarAvatarWrapper: {
+    position: "relative",
+  },
+  scholarAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  followBtn: {
+    position: "absolute",
+    bottom: -6,
+    alignSelf: "center",
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  actionBtn: {
+    alignItems: "center",
+    gap: 3,
+  },
+  actionCount: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  bottomInfo: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 70,
+    paddingHorizontal: 16,
+    gap: 5,
+  },
+  scholarName: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  scholarText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  shortTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 20,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  shortDescription: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  categoryTag: {
+    backgroundColor: "rgba(37,99,235,0.85)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    alignSelf: "flex-start",
+  },
+  categoryTagText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});
