@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Video, Clapperboard, Radio, CheckCircle, ChevronRight } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 
 interface CreateBottomSheetProps {
   visible: boolean;
@@ -22,9 +23,11 @@ interface CreateBottomSheetProps {
 type PickStatus = "idle" | "picking" | "success" | "error";
 
 interface PickResult {
+  uri: string;
   fileName: string;
   duration: number | null;
   fileSize: number | null;
+  videoType: "short" | "long";
 }
 
 export default function CreateBottomSheet({
@@ -137,9 +140,11 @@ export default function CreateBottomSheet({
       }
 
       setPickResult({
+        uri: asset.uri,
         fileName: asset.fileName ?? asset.uri.split("/").pop() ?? "video",
         duration: asset.duration ?? null,
         fileSize: asset.fileSize ?? null,
+        videoType: type,
       });
       setPickStatus("success");
     } catch {
@@ -215,7 +220,23 @@ export default function CreateBottomSheet({
             <TouchableOpacity
               style={styles.uploadBtn}
               activeOpacity={0.8}
-              onPress={handleClose}
+              onPress={() => {
+                if (!pickResult) return;
+                onClose();
+                setPickStatus("idle");
+                setPickResult(null);
+                setActiveOption(null);
+                router.push({
+                  pathname: "/upload",
+                  params: {
+                    uri: pickResult.uri,
+                    fileName: pickResult.fileName,
+                    duration: pickResult.duration ?? "",
+                    fileSize: pickResult.fileSize ?? "",
+                    videoType: pickResult.videoType,
+                  },
+                });
+              }}
             >
               <Text style={styles.uploadBtnText}>Start Upload</Text>
             </TouchableOpacity>

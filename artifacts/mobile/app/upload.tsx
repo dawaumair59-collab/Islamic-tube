@@ -2,14 +2,13 @@ import {
   Clapperboard,
   Film,
   Image as ImageIcon,
-  Lock,
-  Mail,
   Upload,
   X,
   CheckCircle,
+  FileVideo,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -33,14 +32,35 @@ const CATEGORIES = [
 
 const VIDEO_TYPES = ["Long Video", "Short"];
 
+function formatDuration(ms: number) {
+  const secs = Math.round(ms / 1000);
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function UploadScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{
+    uri?: string;
+    fileName?: string;
+    duration?: string;
+    fileSize?: string;
+    videoType?: "short" | "long";
+  }>();
+
+  const initialType = params.videoType === "short" ? "Short" : "Long Video";
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Quran");
-  const [selectedType, setSelectedType] = useState("Long Video");
+  const [selectedType, setSelectedType] = useState(initialType);
   const [tags, setTags] = useState("");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -50,7 +70,12 @@ export default function UploadScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const progressStyle = useAnimatedStyle(() => ({ width: `${progressWidth.value}%` }));
+  const progressStyle = useAnimatedStyle(() => ({ width: `${progressWidth.value}%` as `${number}%` }));
+
+  const hasPickedFile = !!params.uri;
+  const pickedFileName = params.fileName ?? null;
+  const pickedDuration = params.duration ? Number(params.duration) : null;
+  const pickedFileSize = params.fileSize ? Number(params.fileSize) : null;
 
   const handleUpload = () => {
     if (!title) return;
@@ -137,12 +162,40 @@ export default function UploadScreen() {
             <Text style={[styles.uploadBoxSub, { color: colors.mutedForeground }]}>Tap to upload (JPG, PNG · 16:9 ratio)</Text>
           </TouchableOpacity>
 
-          {/* Video file */}
-          <TouchableOpacity style={[styles.uploadBox, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
-            <Film size={36} color={colors.mutedForeground} strokeWidth={1.5} />
-            <Text style={[styles.uploadBoxTitle, { color: colors.foreground }]}>Select Video File</Text>
-            <Text style={[styles.uploadBoxSub, { color: colors.mutedForeground }]}>MP4, MOV, AVI · Max 4GB</Text>
-          </TouchableOpacity>
+          {/* Video file — show picked file info if available, otherwise show picker */}
+          {hasPickedFile ? (
+            <View style={[styles.fileCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <View style={[styles.fileIconWrap, { backgroundColor: colors.accent }]}>
+                <FileVideo size={28} color={colors.primary} strokeWidth={1.5} />
+              </View>
+              <View style={styles.fileInfo}>
+                <Text style={[styles.fileName, { color: colors.foreground }]} numberOfLines={1}>
+                  {pickedFileName}
+                </Text>
+                <View style={styles.fileMeta}>
+                  {pickedDuration != null && pickedDuration > 0 && (
+                    <Text style={[styles.fileMetaText, { color: colors.mutedForeground }]}>
+                      {formatDuration(pickedDuration)}
+                    </Text>
+                  )}
+                  {pickedFileSize != null && pickedFileSize > 0 && (
+                    <Text style={[styles.fileMetaText, { color: colors.mutedForeground }]}>
+                      {formatSize(pickedFileSize)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={[styles.fileReadyBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.fileReadyText}>Ready</Text>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={[styles.uploadBox, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+              <Film size={36} color={colors.mutedForeground} strokeWidth={1.5} />
+              <Text style={[styles.uploadBoxTitle, { color: colors.foreground }]}>Select Video File</Text>
+              <Text style={[styles.uploadBoxSub, { color: colors.mutedForeground }]}>MP4, MOV, AVI · Max 4GB</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Title */}
           <View style={styles.field}>
@@ -172,6 +225,7 @@ export default function UploadScreen() {
               textAlignVertical="top"
               maxLength={500}
             />
+            <Text style={[styles.charCount, { color: colors.mutedForeground }]}>{description.length}/500</Text>
           </View>
 
           {/* Category */}
@@ -207,11 +261,15 @@ export default function UploadScreen() {
             <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.progressHeader}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.progressTitle, { color: colors.foreground }]}>Uploading... {progress}%</Text>
+                <Text style={[styles.progressLabel, { color: colors.foreground }]}>Uploading...</Text>
+                <Text style={[styles.progressPercent, { color: colors.primary }]}>{progress}%</Text>
               </View>
               <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}>
                 <Animated.View style={[styles.progressFill, { backgroundColor: colors.primary }, progressStyle]} />
               </View>
+              <Text style={[styles.progressHint, { color: colors.mutedForeground }]}>
+                Please keep this screen open while uploading.
+              </Text>
             </View>
           )}
 
@@ -235,35 +293,133 @@ export default function UploadScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   headerTitle: { fontSize: 17, fontWeight: "700" },
   publishBtn: { fontSize: 16, fontWeight: "700" },
   content: { padding: 16, gap: 16 },
   typeRow: { flexDirection: "row", borderRadius: 10, padding: 3 },
-  typeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 9, borderRadius: 8 },
+  typeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
   typeBtnText: { fontSize: 13 },
-  uploadBox: { borderWidth: 1.5, borderStyle: "dashed", borderRadius: 14, alignItems: "center", justifyContent: "center", paddingVertical: 32, gap: 8, overflow: "hidden" },
+  uploadBox: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 32,
+    gap: 8,
+    overflow: "hidden",
+  },
   uploadBoxTitle: { fontSize: 15, fontWeight: "600" },
   uploadBoxSub: { fontSize: 12 },
+  fileCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 12,
+  },
+  fileIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  fileInfo: { flex: 1, gap: 4 },
+  fileName: { fontSize: 14, fontWeight: "600" },
+  fileMeta: { flexDirection: "row", gap: 10 },
+  fileMetaText: { fontSize: 12 },
+  fileReadyBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    flexShrink: 0,
+  },
+  fileReadyText: { fontSize: 12, fontWeight: "700", color: "#fff" },
   field: { gap: 6 },
   fieldLabel: { fontSize: 13, fontWeight: "600" },
-  textInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 14 },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 14,
+  },
   multilineInput: { height: 100, paddingTop: 11 },
   charCount: { fontSize: 11, textAlign: "right" },
   catRow: { gap: 8 },
-  catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  catChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
   catChipText: { fontSize: 13 },
-  progressCard: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 10 },
-  progressHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  progressTitle: { fontSize: 14, fontWeight: "600" },
-  progressTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 3 },
-  submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, borderRadius: 14 },
+  progressCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    gap: 10,
+  },
+  progressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  progressLabel: { fontSize: 14, fontWeight: "600", flex: 1 },
+  progressPercent: { fontSize: 14, fontWeight: "700" },
+  progressTrack: { height: 8, borderRadius: 4, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 4 },
+  progressHint: { fontSize: 12 },
+  submitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 15,
+    borderRadius: 14,
+  },
   submitBtnText: { fontSize: 16, fontWeight: "700" },
-  successContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 14 },
-  successIcon: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  successContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+    gap: 14,
+  },
+  successIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
   successTitle: { fontSize: 24, fontWeight: "800" },
   successText: { fontSize: 15, textAlign: "center", lineHeight: 22 },
-  doneBtn: { marginTop: 8, paddingHorizontal: 36, paddingVertical: 14, borderRadius: 14 },
+  doneBtn: {
+    marginTop: 8,
+    paddingHorizontal: 36,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
   doneBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });
