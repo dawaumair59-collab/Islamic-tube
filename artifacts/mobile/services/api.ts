@@ -133,20 +133,63 @@ function paginatedList(data: any): any[] {
 
 export const videosApi = {
   list: async (params?: { category?: string; type?: string }): Promise<Video[]> => {
-    if (params?.type === "short") return SHORTS;
-    if (params?.category) {
-      return VIDEOS.filter((v) => v.category === params.category);
+    try {
+      const res = await apiClient.get("/videos/", {
+        params: {
+          category: params?.category?.toLowerCase(),
+          type: params?.type,
+        },
+      });
+      const videos = paginatedList(res.data).map(normalizeVideo);
+      if (videos.length > 0) return videos;
+    } catch {
+      // fall through to mock
     }
+    // Mock fallback
+    if (params?.type === "short") return SHORTS;
+    if (params?.category) return VIDEOS.filter((v) => v.category === params.category);
     return VIDEOS;
   },
 
   shorts: async (): Promise<Video[]> => {
+    try {
+      const res = await apiClient.get("/videos/", { params: { type: "short" } });
+      const videos = paginatedList(res.data).map(normalizeVideo);
+      if (videos.length > 0) return videos;
+    } catch {
+      // fall through to mock
+    }
     return SHORTS;
   },
 
   detail: async (id: string): Promise<Video> => {
     const res = await apiClient.get(`/videos/${id}/`);
-    return normalizeVideo(res.data);
+    const data = res.data?.video ?? res.data;
+    return normalizeVideo(data);
+  },
+
+  upload: async (payload: {
+    title: string;
+    description: string;
+    category: string;
+    video_type: string;
+    video_url: string;
+    thumbnail_url: string;
+    duration: number;
+    visibility: string;
+    tags: string;
+  }): Promise<any> => {
+    const res = await apiClient.post("/videos/upload/", payload);
+    return res.data;
+  },
+
+  myVideos: async (): Promise<Video[]> => {
+    const res = await apiClient.get("/videos/my-videos/");
+    return paginatedList(res.data).map(normalizeVideo);
+  },
+
+  report: async (id: string, reason: string, description: string): Promise<void> => {
+    await apiClient.post(`/videos/${id}/report/`, { reason, description });
   },
 
   like: async (id: string): Promise<void> => {
@@ -155,6 +198,67 @@ export const videosApi = {
 
   unlike: async (id: string): Promise<void> => {
     await apiClient.delete(`/videos/${id}/unlike/`);
+  },
+};
+
+export const adminApi = {
+  stats: async () => {
+    const res = await apiClient.get("/auth/admin/stats/");
+    return res.data.stats as {
+      total_videos: number;
+      total_users: number;
+      total_scholars: number;
+      pending_videos: number;
+      pending_scholars: number;
+      total_reports: number;
+      approved_videos: number;
+      rejected_videos: number;
+    };
+  },
+
+  pendingVideos: async (): Promise<any[]> => {
+    const res = await apiClient.get("/videos/pending/");
+    return paginatedList(res.data);
+  },
+
+  approveVideo: async (id: string | number): Promise<void> => {
+    await apiClient.patch(`/videos/${id}/approve/`);
+  },
+
+  rejectVideo: async (id: string | number, reason: string): Promise<void> => {
+    await apiClient.patch(`/videos/${id}/reject/`, { rejection_reason: reason });
+  },
+
+  listUsers: async (): Promise<any[]> => {
+    const res = await apiClient.get("/auth/admin/users/");
+    return paginatedList(res.data);
+  },
+
+  banUser: async (id: number): Promise<boolean> => {
+    const res = await apiClient.patch(`/auth/admin/users/${id}/ban/`);
+    return res.data.is_active;
+  },
+
+  listScholarsPending: async (): Promise<any[]> => {
+    const res = await apiClient.get("/auth/admin/scholars/?verified=false");
+    return paginatedList(res.data);
+  },
+
+  verifyScholar: async (id: number): Promise<void> => {
+    await apiClient.patch(`/auth/admin/scholars/${id}/verify/`);
+  },
+
+  rejectScholar: async (id: number): Promise<void> => {
+    await apiClient.patch(`/auth/admin/scholars/${id}/reject/`);
+  },
+
+  listReports: async (): Promise<any[]> => {
+    const res = await apiClient.get("/auth/admin/reports/");
+    return paginatedList(res.data);
+  },
+
+  removeVideo: async (id: number): Promise<void> => {
+    await apiClient.delete(`/auth/admin/videos/${id}/remove/`);
   },
 };
 

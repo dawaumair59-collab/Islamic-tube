@@ -7,11 +7,12 @@ import {
   PlayCircle,
   Search,
   Settings,
+  Shield,
   ThumbsUp,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -22,7 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { SCHOLARS } from "@/data/mockData";
+import { scholarsApi } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 
 const MENU_ITEMS = [
@@ -37,13 +38,23 @@ const MENU_ITEMS = [
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const [scholars, setScholars] = useState<any[]>([]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
 
   const displayName = user ? user.name : "Sign in";
-  const displayHandle = user ? "@user · IslamicTube" : "Personalize your experience";
+  const displayHandle = user ? `@${user.username ?? user.name} · IslamicTube` : "Personalize your experience";
   const displayAvatar = require("../../assets/images/placeholder-scholar.png");
+
+  const isAdmin = user?.role === "admin";
+
+  useEffect(() => {
+    scholarsApi
+      .list()
+      .then((list) => setScholars(list.slice(0, 12)))
+      .catch(() => setScholars([]));
+  }, []);
 
   return (
     <View style={styles.screen}>
@@ -77,6 +88,24 @@ export default function ProfileScreen() {
 
         <View style={styles.divider} />
 
+        {/* Admin Panel link — only for staff */}
+        {isAdmin && (
+          <>
+            <TouchableOpacity
+              style={styles.adminRow}
+              onPress={() => router.push("/admin")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.adminIconWrap}>
+                <Shield size={18} color="#2563EB" strokeWidth={2} />
+              </View>
+              <Text style={styles.adminLabel}>Admin Panel</Text>
+              <ChevronRight size={16} color="#2563EB" strokeWidth={1.8} />
+            </TouchableOpacity>
+            <View style={styles.divider} />
+          </>
+        )}
+
         {/* Subscriptions shelf */}
         <View style={styles.scholarsSection}>
           <View style={styles.scholarsHeader}>
@@ -85,24 +114,34 @@ export default function ProfileScreen() {
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.scholarsRow}
-          >
-            {SCHOLARS.map((scholar) => (
-              <TouchableOpacity
-                key={scholar.id}
-                style={styles.scholarItem}
-                onPress={() => router.push(`/channel/${scholar.id}`)}
-              >
-                <Image source={scholar.avatar} style={styles.scholarAvatar} contentFit="cover" />
-                <Text style={styles.scholarName} numberOfLines={1}>
-                  {scholar.name.split(" ").slice(-1)[0]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {scholars.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.scholarsRow}
+            >
+              {scholars.map((scholar) => (
+                <TouchableOpacity
+                  key={scholar.id}
+                  style={styles.scholarItem}
+                  onPress={() => router.push(`/channel/${scholar.id}`)}
+                >
+                  <Image
+                    source={scholar.avatar ?? require("../../assets/images/placeholder-scholar.png")}
+                    style={styles.scholarAvatar}
+                    contentFit="cover"
+                  />
+                  <Text style={styles.scholarName} numberOfLines={1}>
+                    {(scholar.name ?? "").split(" ").slice(-1)[0]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptySubscriptions}>
+              {user ? "No subscriptions yet" : "Sign in to see your subscriptions"}
+            </Text>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -146,9 +185,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#E5E5E5",
     backgroundColor: "#FFFFFF",
   },
-  navTitle: { fontSize: 20, fontWeight: "700", color: "#0F0F0F" },
-  navRight: { flexDirection: "row", gap: 4 },
-  navBtn: { padding: 8 },
+  navTitle:   { fontSize: 20, fontWeight: "700", color: "#0F0F0F" },
+  navRight:   { flexDirection: "row", gap: 4 },
+  navBtn:     { padding: 8 },
   identityRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -156,12 +195,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
+  avatar:      { width: 56, height: 56, borderRadius: 28 },
   identityText: { flex: 1, gap: 2 },
-  userName: { fontSize: 17, fontWeight: "600", color: "#0F0F0F" },
-  userHandle: { fontSize: 13, color: "#606060" },
-  signInLink: { fontSize: 13, color: "#2563EB", fontWeight: "500", marginTop: 2 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: "#E5E5E5", marginVertical: 4 },
+  userName:    { fontSize: 17, fontWeight: "600", color: "#0F0F0F" },
+  userHandle:  { fontSize: 13, color: "#606060" },
+  signInLink:  { fontSize: 13, color: "#2563EB", fontWeight: "500", marginTop: 2 },
+  divider:     { height: StyleSheet.hairlineWidth, backgroundColor: "#E5E5E5", marginVertical: 4 },
+  adminRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#EEF2FF",
+  },
+  adminIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminLabel:  { flex: 1, fontSize: 14, color: "#2563EB", fontWeight: "600" },
   scholarsSection: { paddingVertical: 12 },
   scholarsHeader: {
     flexDirection: "row",
@@ -171,9 +227,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   scholarsTitle: { fontSize: 15, fontWeight: "600", color: "#0F0F0F" },
-  seeAll: { fontSize: 13, color: "#2563EB" },
-  scholarsRow: { paddingHorizontal: 16, gap: 16 },
-  scholarItem: { alignItems: "center", gap: 6, width: 62 },
+  seeAll:       { fontSize: 13, color: "#2563EB" },
+  scholarsRow:  { paddingHorizontal: 16, gap: 16 },
+  scholarItem:  { alignItems: "center", gap: 6, width: 62 },
   scholarAvatar: {
     width: 52,
     height: 52,
@@ -181,7 +237,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#E5E5E5",
   },
-  scholarName: { fontSize: 11, color: "#0F0F0F", textAlign: "center" },
+  scholarName:      { fontSize: 11, color: "#0F0F0F", textAlign: "center" },
+  emptySubscriptions: { fontSize: 13, color: "#9CA3AF", paddingHorizontal: 16, paddingBottom: 4 },
   menuRow: {
     flexDirection: "row",
     alignItems: "center",

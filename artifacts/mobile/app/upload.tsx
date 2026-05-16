@@ -132,23 +132,55 @@ export default function UploadScreen() {
     ]);
   };
 
-  const handleUpload = () => {
-    if (!title) return;
+  const handleUpload = async () => {
+    if (!title.trim()) return;
     setUploading(true);
     setProgress(0);
     progressWidth.value = 0;
 
+    // Animate progress bar while awaiting API
     let p = 0;
     const interval = setInterval(() => {
-      p += Math.random() * 15;
-      if (p >= 100) {
-        p = 100;
-        clearInterval(interval);
-        setTimeout(() => { setUploading(false); setDone(true); }, 500);
-      }
+      p += Math.random() * 12;
+      if (p >= 88) { p = 88; clearInterval(interval); }
       setProgress(Math.round(p));
       progressWidth.value = withTiming(p, { duration: 300 });
-    }, 400);
+    }, 350);
+
+    try {
+      const durationSec = pickedDuration ? Math.round(pickedDuration / 1000) : 0;
+      const videoType = selectedType === "Short" ? "short" : "long";
+      const vis = visibility.toLowerCase() as "public" | "unlisted" | "private";
+      const videoUrl = params.uri ?? `https://islamictube.app/uploads/${Date.now()}.mp4`;
+      const thumbUrl = thumbnailUri ?? "";
+
+      const { videosApi } = await import("@/services/api");
+      await videosApi.upload({
+        title:         title.trim(),
+        description:   description.trim(),
+        category:      selectedCategory.toLowerCase(),
+        video_type:    videoType,
+        video_url:     videoUrl,
+        thumbnail_url: thumbUrl,
+        duration:      durationSec,
+        visibility:    vis,
+        tags:          tags.trim(),
+      });
+
+      clearInterval(interval);
+      progressWidth.value = withTiming(100, { duration: 400 });
+      setProgress(100);
+      setTimeout(() => { setUploading(false); setDone(true); }, 500);
+    } catch (err: any) {
+      clearInterval(interval);
+      setUploading(false);
+      progressWidth.value = withTiming(0, { duration: 200 });
+      setProgress(0);
+      const msg = err?.response?.data?.errors
+        ? JSON.stringify(err.response.data.errors)
+        : err?.response?.data?.message ?? "Upload failed. Please try again.";
+      Alert.alert("Upload Error", msg);
+    }
   };
 
   if (done) {

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.videos.serializers import VideoListSerializer
-from .models import Like, Comment
+from .models import Like, Comment, VideoReport
 
 
 class LikedVideoSerializer(serializers.ModelSerializer):
@@ -36,6 +36,25 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Comment.objects.create(
+            user=self.context["request"].user,
+            video=self.context["video"],
+            **validated_data,
+        )
+
+
+class VideoReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = VideoReport
+        fields = ["reason", "description"]
+
+    def validate_reason(self, value):
+        valid = [r[0] for r in VideoReport.REASON_CHOICES]
+        if value not in valid:
+            raise serializers.ValidationError(f"Must be one of: {', '.join(valid)}")
+        return value
+
+    def create(self, validated_data):
+        return VideoReport.objects.create(
             user=self.context["request"].user,
             video=self.context["video"],
             **validated_data,

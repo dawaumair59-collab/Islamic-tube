@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import admin_views
 
 urlpatterns = [
     # ---- Auth ----
@@ -15,4 +16,14 @@ urlpatterns = [
     # ---- Scholar ----
     path("scholar/register/", views.scholar_register, name="scholar-register"),
     path("scholars/",         views.list_scholars,    name="scholar-list"),
+
+    # ---- Admin ----
+    path("admin/stats/",                          admin_views.admin_stats,            name="admin-stats"),
+    path("admin/users/",                          admin_views.admin_list_users,       name="admin-users"),
+    path("admin/users/<int:pk>/ban/",             admin_views.admin_ban_user,         name="admin-ban-user"),
+    path("admin/scholars/",                       admin_views.admin_list_scholars,    name="admin-scholars"),
+    path("admin/scholars/<int:pk>/verify/",       admin_views.admin_verify_scholar,   name="admin-verify-scholar"),
+    path("admin/scholars/<int:pk>/reject/",       admin_views.admin_reject_scholar,   name="admin-reject-scholar"),
+    path("admin/reports/",                        admin_views.admin_list_reports,     name="admin-reports"),
+    path("admin/videos/<int:pk>/remove/",         admin_views.admin_remove_video,     name="admin-remove-video"),
 ]

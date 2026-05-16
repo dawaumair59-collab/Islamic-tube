@@ -15,6 +15,7 @@ export interface User {
   email: string;
   avatar: string;
   role: "user" | "scholar" | "admin";
+  username?: string;
   subscribers?: string;
 }
 
@@ -42,7 +43,8 @@ function apiUserToUser(u: any): User {
     name: u.full_name ?? u.username ?? "User",
     email: u.email ?? "",
     avatar: u.avatar_url ?? "",
-    role: u.is_scholar ? "scholar" : "user",
+    role: u.is_staff ? "admin" : u.is_scholar ? "scholar" : "user",
+    username: u.username,
   };
 }
 

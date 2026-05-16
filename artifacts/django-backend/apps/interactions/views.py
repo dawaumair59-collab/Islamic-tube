@@ -7,8 +7,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.videos.models import Video
-from .models import Like, Comment
-from .serializers import LikedVideoSerializer, CommentSerializer
+from .models import Like, Comment, VideoReport
+from .serializers import LikedVideoSerializer, CommentSerializer, VideoReportSerializer
 
 
 class InteractionPagination(PageNumberPagination):
@@ -152,6 +152,26 @@ def video_comments(request, pk):
         {"success": True, "comment": CommentSerializer(comment).data},
         status=status.HTTP_201_CREATED,
     )
+
+
+# POST /api/videos/{id}/report/
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def report_video(request, pk):
+    try:
+        video = Video.objects.get(pk=pk)
+    except Video.DoesNotExist:
+        return Response({"success": False, "message": "Video not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if VideoReport.objects.filter(user=request.user, video=video).exists():
+        return Response({"success": False, "message": "You have already reported this video."}, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer = VideoReportSerializer(data=request.data, context={"request": request, "video": video})
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    serializer.save()
+    return Response({"success": True, "message": "Report submitted. Thank you for helping keep IslamicTube safe."}, status=status.HTTP_201_CREATED)
 
 
 # DELETE /api/comments/{id}/

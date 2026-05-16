@@ -31,6 +31,7 @@ function RootLayoutNav() {
       <Stack.Screen name="channel/[id]" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="playlist/[id]" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="notifications" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="admin" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="auth" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="upload" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="live" options={{ headerShown: false, presentation: "card" }} />

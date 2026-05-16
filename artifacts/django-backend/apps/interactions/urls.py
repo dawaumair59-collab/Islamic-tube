@@ -6,5 +6,6 @@ urlpatterns = [
     path("videos/<int:pk>/like/",        views.like_video,      name="video-like"),
     path("videos/<int:pk>/unlike/",      views.unlike_video,    name="video-unlike"),
     path("videos/<int:pk>/comments/",    views.video_comments,  name="video-comments"),
+    path("videos/<int:pk>/report/",      views.report_video,    name="video-report"),
     path("comments/<int:pk>/",           views.delete_comment,  name="comment-delete"),
 ]

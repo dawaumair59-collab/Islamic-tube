@@ -53,3 +53,35 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} on '{self.video.title}': {self.text[:50]}"
+
+
+class VideoReport(models.Model):
+    REASON_CHOICES = [
+        ("inappropriate", "Inappropriate Content"),
+        ("spam",          "Spam"),
+        ("misleading",    "Misleading Information"),
+        ("copyright",     "Copyright Violation"),
+        ("other",         "Other"),
+    ]
+
+    user        = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+    video       = models.ForeignKey(
+        "videos.Video",
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+    reason      = models.CharField(max_length=20, choices=REASON_CHOICES, default="other")
+    description = models.TextField(blank=True)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table     = "video_reports"
+        unique_together = ["user", "video"]
+        ordering     = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} reported '{self.video.title}': {self.reason}"
