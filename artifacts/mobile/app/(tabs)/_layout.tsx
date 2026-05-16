@@ -82,7 +82,7 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="search"
+          name="create"
           options={{
             title: "Create",
             tabBarIcon: () => (
@@ -97,6 +97,12 @@ export default function TabLayout() {
                 style={[props.style, { alignItems: "center", justifyContent: "center" }]}
               />
             ),
+          }}
+        />
+        <Tabs.Screen
+          name="search"
+          options={{
+            href: null,
           }}
         />
         <Tabs.Screen
