@@ -14,8 +14,9 @@ const BASE_URL = (() => {
   }
   return process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000/api";
 })();
-const ACCESS_KEY = "islamictube_access_token";
-const REFRESH_KEY = "islamictube_refresh_token";
+
+export const ACCESS_KEY = "islamictube_access_token";
+export const REFRESH_KEY = "islamictube_refresh_token";
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -23,11 +24,58 @@ export const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// ── Request interceptor: attach access token ──────────────────────
 apiClient.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem(ACCESS_KEY);
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// ── Response interceptor: refresh token on 401 ───────────────────
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+
+function processQueue(error: any, token: string | null) {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
+  failedQueue = [];
+}
+
+apiClient.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry) {
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          original.headers.Authorization = `Bearer ${token}`;
+          return apiClient(original);
+        });
+      }
+      original._retry = true;
+      isRefreshing = true;
+      try {
+        const refresh = await AsyncStorage.getItem(REFRESH_KEY);
+        if (!refresh) throw new Error("No refresh token");
+        const res = await axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh });
+        const { access } = res.data;
+        await AsyncStorage.setItem(ACCESS_KEY, access);
+        apiClient.defaults.headers.common.Authorization = `Bearer ${access}`;
+        processQueue(null, access);
+        original.headers.Authorization = `Bearer ${access}`;
+        return apiClient(original);
+      } catch (err) {
+        processQueue(err, null);
+        await clearTokens();
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export async function saveTokens(access: string, refresh: string) {
   await AsyncStorage.setItem(ACCESS_KEY, access);
@@ -122,6 +170,7 @@ export function normalizeComment(raw: any): Comment {
     text: raw.text ?? "",
     time: raw.created_at ? formatRelativeTime(raw.created_at) : "",
     likes: 0,
+    userId: raw.user_id ? String(raw.user_id) : undefined,
   };
 }
 
@@ -145,7 +194,6 @@ export const videosApi = {
     } catch {
       // fall through to mock
     }
-    // Mock fallback
     if (params?.type === "short") return SHORTS;
     if (params?.category) return VIDEOS.filter((v) => v.category === params.category);
     return VIDEOS;
@@ -288,7 +336,8 @@ export const commentsApi = {
 
   create: async (videoId: string, text: string): Promise<Comment> => {
     const res = await apiClient.post(`/videos/${videoId}/comments/`, { text });
-    return normalizeComment(res.data);
+    const data = res.data?.comment ?? res.data;
+    return normalizeComment(data);
   },
 
   delete: async (commentId: string): Promise<void> => {
@@ -329,6 +378,10 @@ export const authApi = {
     const res = await apiClient.get("/auth/me/");
     return res.data;
   },
+
+  forgotPassword: async (email: string): Promise<void> => {
+    await apiClient.post("/auth/forgot-password/", { email });
+  },
 };
 
 export const scholarsApi = {
@@ -367,6 +420,53 @@ export const likesApi = {
   myLikes: async (): Promise<Video[]> => {
     const res = await apiClient.get("/likes/my-likes/");
     return paginatedList(res.data).map((item: any) => normalizeVideo(item.video ?? item));
+  },
+};
+
+export const savedVideosApi = {
+  list: async (): Promise<Video[]> => {
+    const res = await apiClient.get("/saved/");
+    return paginatedList(res.data).map((item: any) => normalizeVideo(item.video ?? item));
+  },
+
+  save: async (videoId: string): Promise<void> => {
+    await apiClient.post(`/saved/${videoId}/`);
+  },
+
+  unsave: async (videoId: string): Promise<void> => {
+    await apiClient.delete(`/saved/${videoId}/`);
+  },
+
+  isSaved: async (videoId: string): Promise<boolean> => {
+    try {
+      const res = await apiClient.get(`/saved/${videoId}/status/`);
+      return res.data?.saved ?? false;
+    } catch {
+      return false;
+    }
+  },
+};
+
+export const watchHistoryApi = {
+  list: async (): Promise<Video[]> => {
+    try {
+      const res = await apiClient.get("/watch-history/");
+      return paginatedList(res.data).map((item: any) => normalizeVideo(item.video ?? item));
+    } catch {
+      return [];
+    }
+  },
+
+  add: async (videoId: string): Promise<void> => {
+    try {
+      await apiClient.post(`/watch-history/${videoId}/`);
+    } catch {
+      // non-critical
+    }
+  },
+
+  clear: async (): Promise<void> => {
+    await apiClient.delete("/watch-history/");
   },
 };
 

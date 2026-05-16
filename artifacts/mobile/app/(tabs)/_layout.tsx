@@ -90,11 +90,11 @@ export default function TabLayout() {
                 <Plus size={18} color="#0F0F0F" strokeWidth={2} />
               </View>
             ),
-            tabBarButton: (props) => (
+            tabBarButton: ({ style, ...rest }) => (
               <Pressable
-                {...props}
+                {...(rest as any)}
                 onPress={() => setCreateSheetVisible(true)}
-                style={[props.style, { alignItems: "center", justifyContent: "center" }]}
+                style={[style, { alignItems: "center", justifyContent: "center" }]}
               />
             ),
           }}

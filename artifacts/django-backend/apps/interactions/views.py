@@ -197,3 +197,93 @@ def delete_comment(request, pk):
         {"success": True, "message": "Comment deleted."},
         status=status.HTTP_200_OK,
     )
+
+
+# ================================================================== #
+#  WATCH HISTORY
+# ================================================================== #
+
+from django.utils import timezone
+from .models import WatchHistory, SavedVideo
+from .serializers import WatchHistorySerializer, SavedVideoSerializer
+
+
+# GET  /api/watch-history/   – list user's history
+# DELETE /api/watch-history/ – clear all
+@api_view(["GET", "DELETE"])
+@permission_classes([IsAuthenticated])
+def watch_history_list(request):
+    if request.method == "GET":
+        qs = WatchHistory.objects.filter(user=request.user).select_related("video__scholar")
+        paginator = InteractionPagination()
+        page = paginator.paginate_queryset(qs, request)
+        serializer = WatchHistorySerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    # DELETE — clear all
+    WatchHistory.objects.filter(user=request.user).delete()
+    return Response({"success": True, "message": "Watch history cleared."}, status=status.HTTP_200_OK)
+
+
+# POST /api/watch-history/<id>/ – add or refresh entry
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def watch_history_add(request, pk):
+    try:
+        video = Video.objects.get(pk=pk, status=Video.STATUS_APPROVED)
+    except Video.DoesNotExist:
+        return Response({"success": False, "message": "Video not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    WatchHistory.objects.update_or_create(
+        user=request.user,
+        video=video,
+        defaults={"watched_at": timezone.now()},
+    )
+    return Response({"success": True, "message": "Added to watch history."}, status=status.HTTP_200_OK)
+
+
+# ================================================================== #
+#  SAVED VIDEOS
+# ================================================================== #
+
+# GET /api/saved/ – list saved videos
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def saved_list(request):
+    qs = SavedVideo.objects.filter(user=request.user).select_related("video__scholar")
+    paginator = InteractionPagination()
+    page = paginator.paginate_queryset(qs, request)
+    serializer = SavedVideoSerializer(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
+# POST /api/saved/<id>/   – save
+# DELETE /api/saved/<id>/ – unsave
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def saved_toggle(request, pk):
+    try:
+        video = Video.objects.get(pk=pk)
+    except Video.DoesNotExist:
+        return Response({"success": False, "message": "Video not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "POST":
+        obj, created = SavedVideo.objects.get_or_create(user=request.user, video=video)
+        return Response(
+            {"success": True, "saved": True, "message": "Saved." if created else "Already saved."},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    # DELETE
+    deleted, _ = SavedVideo.objects.filter(user=request.user, video=video).delete()
+    if not deleted:
+        return Response({"success": False, "message": "Not in saved list."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"success": True, "saved": False, "message": "Removed from saved."}, status=status.HTTP_200_OK)
+
+
+# GET /api/saved/<id>/status/ – check if saved
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def saved_status(request, pk):
+    saved = SavedVideo.objects.filter(user=request.user, video_id=pk).exists()
+    return Response({"saved": saved}, status=status.HTTP_200_OK)

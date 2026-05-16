@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Clock, CornerUpLeft, Search, TrendingUp } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -23,7 +24,8 @@ import { useColors } from "@/hooks/useColors";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 16 * 2 - 8) / 2;
 
-const SEARCH_HISTORY = ["Mufti Menk lectures", "How to make dua", "Seerah series"];
+const HISTORY_KEY = "islamictube_search_history";
+const MAX_HISTORY = 20;
 
 function GridVideoCard({ video }: { video: Video }) {
   const colors = useColors();
@@ -54,7 +56,27 @@ export default function SearchScreen() {
   const [results, setResults] = useState<Video[]>([]);
   const [trendingTerms, setTrendingTerms] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HISTORY_KEY)
+      .then((raw) => setSearchHistory(raw ? JSON.parse(raw) : []))
+      .catch(() => {});
+  }, []);
+
+  const saveToHistory = async (term: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    const updated = [trimmed, ...searchHistory.filter((h) => h !== trimmed)].slice(0, MAX_HISTORY);
+    setSearchHistory(updated);
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated)).catch(() => {});
+  };
+
+  const clearHistory = async () => {
+    setSearchHistory([]);
+    await AsyncStorage.removeItem(HISTORY_KEY).catch(() => {});
+  };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
@@ -74,6 +96,9 @@ export default function SearchScreen() {
       try {
         const data = await searchApi.search(query);
         setResults(data.videos);
+        if (data.videos.length > 0) {
+          saveToHistory(query);
+        }
       } catch {
         setResults([]);
       } finally {
@@ -158,19 +183,19 @@ export default function SearchScreen() {
           contentContainerStyle={{ paddingBottom: bottomPad }}
           showsVerticalScrollIndicator={false}
         >
-          {SEARCH_HISTORY.length > 0 && (
+          {searchHistory.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent searches</Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={clearHistory}>
                   <Text style={styles.clearAll}>Clear all</Text>
                 </TouchableOpacity>
               </View>
-              {SEARCH_HISTORY.map((item) => (
+              {searchHistory.map((item) => (
                 <TouchableOpacity
                   key={item}
                   style={styles.historyItem}
-                  onPress={() => setQuery(item)}
+                  onPress={() => { setQuery(item); saveToHistory(item); }}
                 >
                   <Clock size={18} color="#909090" strokeWidth={1.8} />
                   <Text style={styles.historyText}>{item}</Text>

@@ -17,11 +17,14 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
+import { VideoView, useVideoPlayer } from "expo-video";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert as RNAlert,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -29,10 +32,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AuthPromptModal } from "@/components/AuthPromptModal";
 import { CommentSection } from "@/components/CommentSection";
 import { VideoCard } from "@/components/VideoCard";
 import type { Video } from "@/data/mockData";
-import { videosApi, subscriptionsApi } from "@/services/api";
+import {
+  savedVideosApi,
+  subscriptionsApi,
+  videosApi,
+  watchHistoryApi,
+} from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 
@@ -48,20 +57,34 @@ export default function WatchScreen() {
 
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(0);
+  const [saved, setSaved] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [authPromptMessage, setAuthPromptMessage] = useState("");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
+  // ── Video player ──────────────────────────────────────────────────
+  const player = useVideoPlayer(null, (p) => {
+    p.loop = false;
+  });
+
+  useEffect(() => {
+    if (video?.videoUrl) {
+      try {
+        player.replace({ uri: video.videoUrl });
+      } catch {}
+    }
+  }, [video?.videoUrl]);
+
+  // ── Load data ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([
-      videosApi.detail(id),
-      videosApi.list(),
-    ])
+    Promise.all([videosApi.detail(id), videosApi.list()])
       .then(([detail, all]) => {
         setVideo(detail);
         setLikes(detail.likes);
@@ -71,7 +94,20 @@ export default function WatchScreen() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // ── Track watch history + saved status once video loads ───────────
+  useEffect(() => {
+    if (!video || !user) return;
+    watchHistoryApi.add(video.id).catch(() => {});
+    savedVideosApi.isSaved(video.id).then(setSaved).catch(() => {});
+  }, [video?.id, user]);
+
+  // ── Action handlers ───────────────────────────────────────────────
   const handleLike = async () => {
+    if (!user) {
+      setAuthPromptMessage("Sign in to like videos");
+      setShowAuthPrompt(true);
+      return;
+    }
     if (!video) return;
     const wasLiked = liked;
     setLiked(!wasLiked);
@@ -88,7 +124,43 @@ export default function WatchScreen() {
     }
   };
 
+  const handleSave = async () => {
+    if (!user) {
+      setAuthPromptMessage("Sign in to save videos");
+      setShowAuthPrompt(true);
+      return;
+    }
+    if (!video) return;
+    const wasSaved = saved;
+    setSaved(!wasSaved);
+    try {
+      if (wasSaved) {
+        await savedVideosApi.unsave(video.id);
+      } else {
+        await savedVideosApi.save(video.id);
+      }
+    } catch {
+      setSaved(wasSaved);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!video) return;
+    try {
+      await Share.share({
+        message: `Watch "${video.title}" by ${video.scholar} on IslamicTube`,
+        url: `https://islamictube.app/watch/${video.id}`,
+        title: video.title,
+      });
+    } catch {}
+  };
+
   const handleSubscribe = async () => {
+    if (!user) {
+      setAuthPromptMessage("Sign in to subscribe to scholars");
+      setShowAuthPrompt(true);
+      return;
+    }
     if (!video?.scholarId) return;
     const wasSubscribed = subscribed;
     setSubscribed(!wasSubscribed);
@@ -105,7 +177,16 @@ export default function WatchScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.screen, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+      <View
+        style={[
+          styles.screen,
+          {
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
         <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
@@ -113,28 +194,129 @@ export default function WatchScreen() {
 
   if (!video) {
     return (
-      <View style={[styles.screen, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+      <View
+        style={[
+          styles.screen,
+          {
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
         <Text style={{ color: colors.mutedForeground }}>Video not found</Text>
       </View>
     );
   }
 
+  const hasVideo = Boolean(video.videoUrl);
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={styles.playerWrapper}>
-          <Image source={video.thumbnail} style={styles.playerThumb} contentFit="cover" />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.6)"]}
-            style={StyleSheet.absoluteFill}
-          />
+      <AuthPromptModal
+        visible={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        message={authPromptMessage}
+      />
 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* ── Player ─────────────────────────────────────────────── */}
+        <View style={styles.playerWrapper}>
+          {hasVideo ? (
+            <>
+              <VideoView
+                player={player}
+                style={StyleSheet.absoluteFill}
+                allowsPictureInPicture
+                nativeControls
+                contentFit="contain"
+              />
+              <LinearGradient
+                colors={["rgba(0,0,0,0.55)", "transparent"]}
+                style={styles.topGradient}
+                pointerEvents="none"
+              />
+            </>
+          ) : (
+            <>
+              <Image
+                source={video.thumbnail}
+                style={styles.playerThumb}
+                contentFit="cover"
+              />
+              <LinearGradient
+                colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.6)"]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              <TouchableOpacity
+                style={styles.playCenter}
+                onPress={() => setIsPlaying((p) => !p)}
+              >
+                <View style={styles.playCircle}>
+                  {isPlaying ? (
+                    <Pause size={32} color="#fff" fill="#fff" strokeWidth={0} />
+                  ) : (
+                    <Play
+                      size={32}
+                      color="#fff"
+                      fill="#fff"
+                      strokeWidth={0}
+                      style={{ marginLeft: 3 }}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+              <View style={styles.playerBottom}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { backgroundColor: "rgba(255,255,255,0.3)" },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { backgroundColor: colors.primary, width: "0%" },
+                    ]}
+                  />
+                </View>
+                <View style={styles.playerControls}>
+                  <Text style={styles.timeText}>0:00 / {video.duration}</Text>
+                  <View style={styles.rightControls}>
+                    <TouchableOpacity style={styles.playerIconBtn}>
+                      <Settings size={18} color="#fff" strokeWidth={1.8} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.playerIconBtn}>
+                      <Maximize size={20} color="#fff" strokeWidth={1.8} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Top controls always visible */}
           <View style={[styles.playerTop, { paddingTop: topPad + 4 }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backBtn}
+            >
               <ChevronDown size={24} color="#fff" strokeWidth={2} />
             </TouchableOpacity>
             <View style={styles.playerTopRight}>
-              <TouchableOpacity style={styles.playerIconBtn}>
+              <TouchableOpacity
+                style={styles.playerIconBtn}
+                onPress={() =>
+                  RNAlert.alert(
+                    "Cast",
+                    "Screen casting is not available yet."
+                  )
+                }
+              >
                 <Cast size={20} color="#fff" strokeWidth={1.8} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.playerIconBtn}>
@@ -142,45 +324,30 @@ export default function WatchScreen() {
               </TouchableOpacity>
             </View>
           </View>
-
-          <TouchableOpacity style={styles.playCenter} onPress={() => setIsPlaying((p) => !p)}>
-            <View style={styles.playCircle}>
-              {isPlaying ? (
-                <Pause size={32} color="#fff" fill="#fff" strokeWidth={0} />
-              ) : (
-                <Play size={32} color="#fff" fill="#fff" strokeWidth={0} style={{ marginLeft: 3 }} />
-              )}
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.playerBottom}>
-            <View style={[styles.progressBar, { backgroundColor: "rgba(255,255,255,0.3)" }]}>
-              <View style={[styles.progressFill, { backgroundColor: colors.primary, width: "35%" }]} />
-            </View>
-            <View style={styles.playerControls}>
-              <Text style={styles.timeText}>0:00 / {video.duration}</Text>
-              <View style={styles.rightControls}>
-                <TouchableOpacity style={styles.playerIconBtn}>
-                  <Settings size={18} color="#fff" strokeWidth={1.8} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.playerIconBtn}>
-                  <Maximize size={20} color="#fff" strokeWidth={1.8} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
         </View>
 
+        {/* ── Content ────────────────────────────────────────────── */}
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.foreground }]}>{video.title}</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            {video.title}
+          </Text>
 
           <Text style={[styles.statsText, { color: colors.mutedForeground }]}>
             {video.views} views · {video.createdAt}
           </Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actions}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.actions}
+          >
             <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: liked ? colors.accent : colors.secondary }]}
+              style={[
+                styles.actionBtn,
+                {
+                  backgroundColor: liked ? colors.accent : colors.secondary,
+                },
+              ]}
               onPress={handleLike}
             >
               <ThumbsUp
@@ -189,7 +356,12 @@ export default function WatchScreen() {
                 fill={liked ? colors.primary : "transparent"}
                 strokeWidth={1.8}
               />
-              <Text style={[styles.actionLabel, { color: liked ? colors.primary : colors.foreground }]}>
+              <Text
+                style={[
+                  styles.actionLabel,
+                  { color: liked ? colors.primary : colors.foreground },
+                ]}
+              >
                 {likes >= 1000 ? `${(likes / 1000).toFixed(0)}K` : likes}
               </Text>
             </TouchableOpacity>
@@ -198,38 +370,112 @@ export default function WatchScreen() {
               style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
               onPress={() => setShowComments((s) => !s)}
             >
-              <MessageCircle size={18} color={colors.foreground} strokeWidth={1.8} />
-              <Text style={[styles.actionLabel, { color: colors.foreground }]}>Comment</Text>
+              <MessageCircle
+                size={18}
+                color={colors.foreground}
+                strokeWidth={1.8}
+              />
+              <Text
+                style={[styles.actionLabel, { color: colors.foreground }]}
+              >
+                Comment
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <Share2 size={18} color={colors.foreground} strokeWidth={1.8} />
-              <Text style={[styles.actionLabel, { color: colors.foreground }]}>Share</Text>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+              onPress={handleShare}
+            >
+              <Share2
+                size={18}
+                color={colors.foreground}
+                strokeWidth={1.8}
+              />
+              <Text
+                style={[styles.actionLabel, { color: colors.foreground }]}
+              >
+                Share
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <Bookmark size={18} color={colors.foreground} strokeWidth={1.8} />
-              <Text style={[styles.actionLabel, { color: colors.foreground }]}>Save</Text>
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                { backgroundColor: saved ? colors.accent : colors.secondary },
+              ]}
+              onPress={handleSave}
+            >
+              <Bookmark
+                size={18}
+                color={saved ? colors.primary : colors.foreground}
+                fill={saved ? colors.primary : "transparent"}
+                strokeWidth={1.8}
+              />
+              <Text
+                style={[
+                  styles.actionLabel,
+                  { color: saved ? colors.primary : colors.foreground },
+                ]}
+              >
+                Save
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
-              <Download size={18} color={colors.foreground} strokeWidth={1.8} />
-              <Text style={[styles.actionLabel, { color: colors.foreground }]}>Download</Text>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+              onPress={() =>
+                RNAlert.alert(
+                  "Coming Soon",
+                  "Downloads will be available in a future update."
+                )
+              }
+            >
+              <Download
+                size={18}
+                color={colors.foreground}
+                strokeWidth={1.8}
+              />
+              <Text
+                style={[styles.actionLabel, { color: colors.foreground }]}
+              >
+                Download
+              </Text>
             </TouchableOpacity>
           </ScrollView>
 
           <TouchableOpacity
-            style={[styles.scholarCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[
+              styles.scholarCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
             onPress={() => router.push(`/channel/${video.scholarId}`)}
           >
-            <Image source={video.scholarAvatar} style={styles.scholarAvatar} contentFit="cover" />
+            <Image
+              source={video.scholarAvatar}
+              style={styles.scholarAvatar}
+              contentFit="cover"
+            />
             <View style={styles.scholarInfo}>
               <View style={styles.scholarNameRow}>
-                <Text style={[styles.scholarName, { color: colors.foreground }]}>{video.scholar}</Text>
-                <BadgeCheck size={15} color={colors.primary} fill={colors.primary} strokeWidth={0} />
+                <Text
+                  style={[styles.scholarName, { color: colors.foreground }]}
+                >
+                  {video.scholar}
+                </Text>
+                <BadgeCheck
+                  size={15}
+                  color={colors.primary}
+                  fill={colors.primary}
+                  strokeWidth={0}
+                />
               </View>
               {video.subscribers && (
-                <Text style={[styles.subscriberCount, { color: colors.mutedForeground }]}>
+                <Text
+                  style={[
+                    styles.subscriberCount,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
                   {video.subscribers} subscribers
                 </Text>
               )}
@@ -237,11 +483,20 @@ export default function WatchScreen() {
             <TouchableOpacity
               style={[
                 styles.subscribeBtn,
-                { backgroundColor: subscribed ? colors.secondary : colors.primary },
+                {
+                  backgroundColor: subscribed
+                    ? colors.secondary
+                    : colors.primary,
+                },
               ]}
               onPress={handleSubscribe}
             >
-              <Text style={[styles.subscribeBtnText, { color: subscribed ? colors.foreground : "#fff" }]}>
+              <Text
+                style={[
+                  styles.subscribeBtnText,
+                  { color: subscribed ? colors.foreground : "#fff" },
+                ]}
+              >
                 {subscribed ? "Subscribed" : "Subscribe"}
               </Text>
             </TouchableOpacity>
@@ -249,10 +504,16 @@ export default function WatchScreen() {
 
           {video.description ? (
             <TouchableOpacity
-              style={[styles.descCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[
+                styles.descCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               onPress={() => setShowFullDesc((s) => !s)}
             >
-              <Text style={[styles.descText, { color: colors.foreground }]} numberOfLines={showFullDesc ? undefined : 3}>
+              <Text
+                style={[styles.descText, { color: colors.foreground }]}
+                numberOfLines={showFullDesc ? undefined : 3}
+              >
                 {video.description}
               </Text>
               <Text style={[styles.descToggle, { color: colors.primary }]}>
@@ -262,23 +523,53 @@ export default function WatchScreen() {
           ) : null}
 
           <TouchableOpacity
-            style={[styles.commentsToggle, { borderColor: colors.border }]}
+            style={[
+              styles.commentsToggle,
+              { borderColor: colors.border },
+            ]}
             onPress={() => setShowComments((s) => !s)}
           >
-            <Text style={[styles.commentsToggleText, { color: colors.foreground }]}>Comments</Text>
+            <Text
+              style={[
+                styles.commentsToggleText,
+                { color: colors.foreground },
+              ]}
+            >
+              Comments
+            </Text>
             {showComments ? (
-              <ChevronUp size={20} color={colors.mutedForeground} strokeWidth={1.8} />
+              <ChevronUp
+                size={20}
+                color={colors.mutedForeground}
+                strokeWidth={1.8}
+              />
             ) : (
-              <ChevronDown size={20} color={colors.mutedForeground} strokeWidth={1.8} />
+              <ChevronDown
+                size={20}
+                color={colors.mutedForeground}
+                strokeWidth={1.8}
+              />
             )}
           </TouchableOpacity>
 
-          {showComments && <CommentSection videoId={video.id} />}
+          {showComments && (
+            <CommentSection
+              videoId={video.id}
+              onAuthRequired={(msg) => {
+                setAuthPromptMessage(msg);
+                setShowAuthPrompt(true);
+              }}
+            />
+          )}
         </View>
 
         {related.length > 0 && (
           <View style={styles.relatedSection}>
-            <Text style={[styles.relatedTitle, { color: colors.foreground }]}>Related Videos</Text>
+            <Text
+              style={[styles.relatedTitle, { color: colors.foreground }]}
+            >
+              Related Videos
+            </Text>
             {related.map((v) => (
               <VideoCard key={v.id} video={v} />
             ))}
@@ -298,6 +589,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   playerThumb: { width: "100%", height: "100%", position: "absolute" },
+  topGradient: { position: "absolute", top: 0, left: 0, right: 0, height: 90 },
   playerTop: {
     position: "absolute",
     top: 0,
@@ -307,6 +599,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
+    zIndex: 10,
   },
   backBtn: { padding: 4 },
   playerTopRight: { flexDirection: "row", gap: 8 },
@@ -345,7 +638,12 @@ const styles = StyleSheet.create({
   },
   timeText: { color: "#fff", fontSize: 12 },
   rightControls: { flexDirection: "row", gap: 4 },
-  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, gap: 14 },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 4,
+    gap: 14,
+  },
   relatedSection: { paddingBottom: 8 },
   title: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
   statsText: { fontSize: 13 },
@@ -372,7 +670,11 @@ const styles = StyleSheet.create({
   scholarNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   scholarName: { fontSize: 14, fontWeight: "700" },
   subscriberCount: { fontSize: 12 },
-  subscribeBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  subscribeBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
   subscribeBtnText: { fontSize: 13, fontWeight: "700" },
   descCard: {
     padding: 12,
@@ -391,5 +693,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   commentsToggleText: { fontSize: 15, fontWeight: "700" },
-  relatedTitle: { fontSize: 15, fontWeight: "700", paddingHorizontal: 12, paddingTop: 12, paddingBottom: 6 },
+  relatedTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
 });

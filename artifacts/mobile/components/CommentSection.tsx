@@ -1,4 +1,4 @@
-import { Send, ThumbsUp } from "lucide-react-native";
+import { Send, ThumbsUp, Trash2 } from "lucide-react-native";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,16 +15,35 @@ import { commentsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 
-function CommentItem({ comment }: { comment: Comment }) {
+interface CommentItemProps {
+  comment: Comment;
+  currentUserId?: string;
+  onDelete: (id: string) => void;
+}
+
+function CommentItem({ comment, currentUserId, onDelete }: CommentItemProps) {
   const colors = useColors();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(comment.likes);
+  const [deleting, setDeleting] = useState(false);
+
+  const isOwner = Boolean(currentUserId && comment.userId && currentUserId === comment.userId);
 
   const handleLike = () => {
     setLiked((prev) => {
       setLikes((l) => (prev ? l - 1 : l + 1));
       return !prev;
     });
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await commentsApi.delete(comment.id);
+      onDelete(comment.id);
+    } catch {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -38,6 +57,19 @@ function CommentItem({ comment }: { comment: Comment }) {
           <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>
             {comment.time}
           </Text>
+          {isOwner && (
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={deleting}
+              style={styles.deleteBtn}
+            >
+              <Trash2
+                size={13}
+                color={deleting ? colors.mutedForeground : "#EF4444"}
+                strokeWidth={1.8}
+              />
+            </TouchableOpacity>
+          )}
         </View>
         <Text style={[styles.commentText, { color: colors.foreground }]}>
           {comment.text}
@@ -50,12 +82,19 @@ function CommentItem({ comment }: { comment: Comment }) {
               fill={liked ? colors.primary : "transparent"}
               strokeWidth={1.8}
             />
-            <Text style={[styles.likeCount, { color: liked ? colors.primary : colors.mutedForeground }]}>
+            <Text
+              style={[
+                styles.likeCount,
+                { color: liked ? colors.primary : colors.mutedForeground },
+              ]}
+            >
               {likes}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.replyBtn}>
-            <Text style={[styles.replyText, { color: colors.mutedForeground }]}>Reply</Text>
+            <Text style={[styles.replyText, { color: colors.mutedForeground }]}>
+              Reply
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -65,15 +104,18 @@ function CommentItem({ comment }: { comment: Comment }) {
 
 interface Props {
   videoId: string;
+  onAuthRequired?: (message: string) => void;
 }
 
-export function CommentSection({ videoId }: Props) {
+export function CommentSection({ videoId, onAuthRequired }: Props) {
   const colors = useColors();
   const { user } = useAuth();
   const [input, setInput] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+
+  const currentUserId = user ? String((user as any).id ?? "") : undefined;
 
   useEffect(() => {
     if (!videoId) return;
@@ -88,16 +130,26 @@ export function CommentSection({ videoId }: Props) {
   const handleSend = async () => {
     const text = input.trim();
     if (!text || posting) return;
+
+    if (!user) {
+      onAuthRequired?.("Sign in to post a comment");
+      return;
+    }
+
     setPosting(true);
     try {
       const newComment = await commentsApi.create(videoId, text);
       setComments((prev) => [newComment, ...prev]);
       setInput("");
     } catch {
-      // silently fail — user must be authenticated
+      // API will return 401 if token expired — refresh interceptor handles it
     } finally {
       setPosting(false);
     }
+  };
+
+  const handleDelete = (id: string) => {
+    setComments((prev) => prev.filter((c) => c.id !== id));
   };
 
   return (
@@ -108,30 +160,53 @@ export function CommentSection({ videoId }: Props) {
       <View style={[styles.inputRow, { borderColor: colors.border }]}>
         <TextInput
           style={[styles.input, { color: colors.foreground }]}
-          placeholder="Add a comment..."
+          placeholder={user ? "Add a comment..." : "Sign in to comment..."}
           placeholderTextColor={colors.mutedForeground}
           value={input}
           onChangeText={setInput}
+          onFocus={() => {
+            if (!user) {
+              onAuthRequired?.("Sign in to post a comment");
+            }
+          }}
           multiline
+          editable={Boolean(user)}
         />
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: posting ? 0.6 : 1 }]}
+          style={[
+            styles.sendBtn,
+            {
+              backgroundColor: user ? colors.primary : colors.secondary,
+              opacity: posting ? 0.6 : 1,
+            },
+          ]}
           activeOpacity={0.8}
           onPress={handleSend}
-          disabled={posting}
+          disabled={posting || !user}
         >
-          <Send size={14} color="#fff" strokeWidth={2} />
+          <Send size={14} color={user ? "#fff" : colors.mutedForeground} strokeWidth={2} />
         </TouchableOpacity>
       </View>
       {loading ? (
-        <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 12 }} />
+        <ActivityIndicator
+          size="small"
+          color="#2563EB"
+          style={{ marginTop: 12 }}
+        />
       ) : comments.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+        <Text
+          style={[styles.emptyText, { color: colors.mutedForeground }]}
+        >
           No comments yet. Be the first!
         </Text>
       ) : (
         comments.map((comment) => (
-          <CommentItem key={comment.id} comment={comment} />
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            currentUserId={currentUserId}
+            onDelete={handleDelete}
+          />
         ))
       )}
     </View>
@@ -163,11 +238,22 @@ const styles = StyleSheet.create({
   comment: { flexDirection: "row", gap: 10, marginBottom: 14 },
   avatar: { width: 32, height: 32, borderRadius: 16, flexShrink: 0 },
   commentBody: { flex: 1, gap: 3 },
-  commentHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  commentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
   commentAuthor: { fontSize: 13, fontWeight: "600" },
   commentTime: { fontSize: 11 },
+  deleteBtn: { marginLeft: "auto", padding: 2 },
   commentText: { fontSize: 13, lineHeight: 18 },
-  commentActions: { flexDirection: "row", alignItems: "center", gap: 16, marginTop: 4 },
+  commentActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginTop: 4,
+  },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   likeCount: { fontSize: 12 },
   replyBtn: {},

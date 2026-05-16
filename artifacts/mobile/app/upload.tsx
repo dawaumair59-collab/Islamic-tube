@@ -132,27 +132,90 @@ export default function UploadScreen() {
     ]);
   };
 
+  const uploadToCloudinary = async (
+    uri: string,
+    resourceType: "video" | "image",
+    onProgress: (pct: number) => void
+  ): Promise<string> => {
+    const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !uploadPreset) {
+      throw new Error("Cloudinary not configured");
+    }
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      const ext = uri.split(".").pop() ?? (resourceType === "video" ? "mp4" : "jpg");
+      const mime = resourceType === "video" ? `video/${ext}` : `image/${ext}`;
+      formData.append("file", { uri, type: mime, name: `upload.${ext}` } as any);
+      formData.append("upload_preset", uploadPreset);
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (xhr.status === 200) resolve(res.secure_url);
+          else reject(new Error(res.error?.message ?? "Cloudinary upload failed"));
+        } catch {
+          reject(new Error("Invalid Cloudinary response"));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`);
+      xhr.send(formData);
+    });
+  };
+
   const handleUpload = async () => {
     if (!title.trim()) return;
     setUploading(true);
     setProgress(0);
     progressWidth.value = 0;
 
-    // Animate progress bar while awaiting API
-    let p = 0;
-    const interval = setInterval(() => {
-      p += Math.random() * 12;
-      if (p >= 88) { p = 88; clearInterval(interval); }
-      setProgress(Math.round(p));
-      progressWidth.value = withTiming(p, { duration: 300 });
-    }, 350);
+    const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const hasCloudinary = Boolean(cloudName && process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     try {
       const durationSec = pickedDuration ? Math.round(pickedDuration / 1000) : 0;
       const videoType = selectedType === "Short" ? "short" : "long";
       const vis = visibility.toLowerCase() as "public" | "unlisted" | "private";
-      const videoUrl = params.uri ?? `https://islamictube.app/uploads/${Date.now()}.mp4`;
-      const thumbUrl = thumbnailUri ?? "";
+      let videoUrl = "";
+      let thumbUrl = "";
+
+      if (hasCloudinary && params.uri) {
+        // Real Cloudinary upload with progress
+        videoUrl = await uploadToCloudinary(params.uri, "video", (pct) => {
+          const scaled = Math.round(pct * 0.8);
+          setProgress(scaled);
+          progressWidth.value = withTiming(scaled, { duration: 200 });
+        });
+        if (thumbnailUri) {
+          thumbUrl = await uploadToCloudinary(thumbnailUri, "image", (pct) => {
+            const scaled = 80 + Math.round(pct * 0.1);
+            setProgress(scaled);
+            progressWidth.value = withTiming(scaled, { duration: 200 });
+          });
+        }
+      } else {
+        // Animate mock progress
+        let p = 0;
+        interval = setInterval(() => {
+          p += Math.random() * 12;
+          if (p >= 88) { p = 88; clearInterval(interval!); interval = null; }
+          setProgress(Math.round(p));
+          progressWidth.value = withTiming(p, { duration: 300 });
+        }, 350);
+        videoUrl = params.uri ?? `https://islamictube.app/uploads/${Date.now()}.mp4`;
+        thumbUrl = thumbnailUri ?? "";
+        // Short delay to let mock progress run
+        await new Promise((r) => setTimeout(r, 2000));
+        if (interval) { clearInterval(interval); interval = null; }
+      }
+
+      setProgress(90);
+      progressWidth.value = withTiming(90, { duration: 200 });
 
       const { videosApi } = await import("@/services/api");
       await videosApi.upload({
@@ -167,18 +230,17 @@ export default function UploadScreen() {
         tags:          tags.trim(),
       });
 
-      clearInterval(interval);
       progressWidth.value = withTiming(100, { duration: 400 });
       setProgress(100);
       setTimeout(() => { setUploading(false); setDone(true); }, 500);
     } catch (err: any) {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       setUploading(false);
       progressWidth.value = withTiming(0, { duration: 200 });
       setProgress(0);
       const msg = err?.response?.data?.errors
         ? JSON.stringify(err.response.data.errors)
-        : err?.response?.data?.message ?? "Upload failed. Please try again.";
+        : err?.response?.data?.message ?? err?.message ?? "Upload failed. Please try again.";
       Alert.alert("Upload Error", msg);
     }
   };

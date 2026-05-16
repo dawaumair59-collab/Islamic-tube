@@ -12,12 +12,14 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { VideoView, useVideoPlayer } from "expo-video";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Platform,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,18 +34,22 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AuthPromptModal } from "@/components/AuthPromptModal";
 import type { Video } from "@/data/mockData";
 import { videosApi, subscriptionsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(item.likes);
   const [following, setFollowing] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   const likeScale = useSharedValue(1);
 
@@ -51,7 +57,31 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
     transform: [{ scale: likeScale.value }],
   }));
 
+  // ── Video player ────────────────────────────────────────────────
+  const player = useVideoPlayer(
+    item.videoUrl ? { uri: item.videoUrl } : null,
+    (p) => {
+      p.loop = true;
+    }
+  );
+
+  useEffect(() => {
+    if (isActive && item.videoUrl) {
+      try {
+        player.play();
+      } catch {}
+    } else {
+      try {
+        player.pause();
+      } catch {}
+    }
+  }, [isActive, item.videoUrl]);
+
   const handleLike = async () => {
+    if (!user) {
+      setShowAuthPrompt(true);
+      return;
+    }
     const wasLiked = liked;
     setLiked(!wasLiked);
     setLikes((l) => (wasLiked ? l - 1 : l + 1));
@@ -72,6 +102,10 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
   };
 
   const handleFollow = async () => {
+    if (!user) {
+      setShowAuthPrompt(true);
+      return;
+    }
     const wasFollowing = following;
     setFollowing(!wasFollowing);
     try {
@@ -85,22 +119,47 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
     }
   };
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Watch "${item.title}" by ${item.scholar} on IslamicTube`,
+        url: `https://islamictube.app/watch/${item.id}`,
+        title: item.title,
+      });
+    } catch {}
+  };
+
   const bottomPad = Platform.OS === "web" ? 84 + 34 : 90 + insets.bottom;
 
   return (
     <View style={[styles.slide, { height: SCREEN_HEIGHT }]}>
-      <Image
-        source={item.thumbnail}
-        style={styles.background}
-        contentFit="cover"
-        transition={300}
-      />
+      {item.videoUrl ? (
+        <VideoView
+          player={player}
+          style={styles.background}
+          contentFit="cover"
+          nativeControls={false}
+        />
+      ) : (
+        <Image
+          source={item.thumbnail}
+          style={styles.background}
+          contentFit="cover"
+          transition={300}
+        />
+      )}
       <LinearGradient
         colors={["rgba(0,0,0,0.15)", "transparent", "rgba(0,0,0,0.75)"]}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
 
-      <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
+      <View
+        style={[
+          styles.topBar,
+          { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <ChevronLeft size={26} color="#fff" strokeWidth={2} />
         </TouchableOpacity>
@@ -112,11 +171,19 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
 
       <View style={[styles.actions, { bottom: bottomPad + 60 }]}>
         <View style={styles.scholarAvatarWrapper}>
-          <Image source={item.scholarAvatar} style={styles.scholarAvatar} contentFit="cover" />
+          <Image
+            source={item.scholarAvatar}
+            style={styles.scholarAvatar}
+            contentFit="cover"
+          />
           <TouchableOpacity
             style={[
               styles.followBtn,
-              { backgroundColor: following ? colors.mutedForeground : colors.primary },
+              {
+                backgroundColor: following
+                  ? colors.mutedForeground
+                  : colors.primary,
+              },
             ]}
             onPress={handleFollow}
           >
@@ -142,12 +209,15 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
           </TouchableOpacity>
         </Animated.View>
 
-        <TouchableOpacity style={styles.actionBtn}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => router.push(`/watch/${item.id}`)}
+        >
           <MessageCircle size={28} color="#fff" strokeWidth={1.8} />
           <Text style={styles.actionCount}>Comment</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn}>
+        <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
           <Share2 size={26} color="#fff" strokeWidth={1.8} />
           <Text style={styles.actionCount}>Share</Text>
         </TouchableOpacity>
@@ -163,14 +233,29 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
           style={styles.scholarNameRow}
         >
           <Text style={styles.scholarText}>{item.scholar}</Text>
-          <BadgeCheck size={14} color={colors.primary} fill={colors.primary} strokeWidth={0} />
+          <BadgeCheck
+            size={14}
+            color={colors.primary}
+            fill={colors.primary}
+            strokeWidth={0}
+          />
         </TouchableOpacity>
-        <Text style={styles.shortTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.shortDescription} numberOfLines={1}>{item.description}</Text>
+        <Text style={styles.shortTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <Text style={styles.shortDescription} numberOfLines={1}>
+          {item.description}
+        </Text>
         <View style={styles.categoryTag}>
           <Text style={styles.categoryTagText}>{item.category}</Text>
         </View>
       </View>
+
+      <AuthPromptModal
+        visible={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        message="Sign in to like and follow scholars"
+      />
     </View>
   );
 }
@@ -201,7 +286,12 @@ export default function ShortsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { alignItems: "center", justifyContent: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color="#fff" />
       </View>
     );
@@ -209,8 +299,15 @@ export default function ShortsScreen() {
 
   if (shorts.length === 0) {
     return (
-      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
-        <Text style={{ color: "#fff", fontSize: 15 }}>No shorts available</Text>
+      <View
+        style={[
+          styles.container,
+          { alignItems: "center", justifyContent: "center" },
+        ]}
+      >
+        <Text style={{ color: "#fff", fontSize: 15 }}>
+          No shorts available
+        </Text>
       </View>
     );
   }
@@ -232,6 +329,9 @@ export default function ShortsScreen() {
           offset: SCREEN_HEIGHT * index,
           index,
         })}
+        windowSize={3}
+        maxToRenderPerBatch={3}
+        initialNumToRender={2}
       />
     </View>
   );

@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class Like(models.Model):
@@ -25,7 +26,7 @@ class Like(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.username} ♥ {self.video.title}"
+        return f"{self.user.username} liked {self.video.title}"
 
 
 class Comment(models.Model):
@@ -85,3 +86,49 @@ class VideoReport(models.Model):
 
     def __str__(self):
         return f"{self.user.username} reported '{self.video.title}': {self.reason}"
+
+
+class WatchHistory(models.Model):
+    user       = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="watch_history",
+    )
+    video      = models.ForeignKey(
+        "videos.Video",
+        on_delete=models.CASCADE,
+        related_name="watch_history",
+    )
+    watched_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table        = "watch_history"
+        unique_together = ["user", "video"]
+        ordering        = ["-watched_at"]
+        indexes         = [models.Index(fields=["user"])]
+
+    def __str__(self):
+        return f"{self.user.username} watched {self.video.title}"
+
+
+class SavedVideo(models.Model):
+    user     = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_videos",
+    )
+    video    = models.ForeignKey(
+        "videos.Video",
+        on_delete=models.CASCADE,
+        related_name="saved_by",
+    )
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table        = "saved_videos"
+        unique_together = ["user", "video"]
+        ordering        = ["-saved_at"]
+        indexes         = [models.Index(fields=["user"])]
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.video.title}"

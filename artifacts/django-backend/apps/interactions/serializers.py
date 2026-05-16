@@ -1,10 +1,10 @@
 from rest_framework import serializers
 from apps.videos.serializers import VideoListSerializer
-from .models import Like, Comment, VideoReport
+from .models import Like, Comment, VideoReport, WatchHistory, SavedVideo
 
 
 class LikedVideoSerializer(serializers.ModelSerializer):
-    video = VideoListSerializer(read_only=True)
+    video    = VideoListSerializer(read_only=True)
     liked_at = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
@@ -13,18 +13,22 @@ class LikedVideoSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    username   = serializers.CharField(source="user.username",      read_only=True)
-    full_name  = serializers.CharField(source="user.full_name",     read_only=True)
-    avatar_url = serializers.CharField(source="user.avatar_url",    read_only=True)
+    username   = serializers.CharField(source="user.username",   read_only=True)
+    full_name  = serializers.CharField(source="user.full_name",  read_only=True)
+    avatar_url = serializers.CharField(source="user.avatar_url", read_only=True)
+    user_id    = serializers.IntegerField(source="user.id",      read_only=True)
 
     class Meta:
         model  = Comment
         fields = [
             "id", "text",
-            "username", "full_name", "avatar_url",
+            "username", "full_name", "avatar_url", "user_id",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "username", "full_name", "avatar_url", "created_at", "updated_at"]
+        read_only_fields = [
+            "id", "username", "full_name", "avatar_url", "user_id",
+            "created_at", "updated_at",
+        ]
 
     def validate_text(self, value):
         value = value.strip()
@@ -59,3 +63,21 @@ class VideoReportSerializer(serializers.ModelSerializer):
             video=self.context["video"],
             **validated_data,
         )
+
+
+class WatchHistorySerializer(serializers.ModelSerializer):
+    video      = VideoListSerializer(read_only=True)
+    watched_at = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model  = WatchHistory
+        fields = ["id", "video", "watched_at"]
+
+
+class SavedVideoSerializer(serializers.ModelSerializer):
+    video    = VideoListSerializer(read_only=True)
+    saved_at = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model  = SavedVideo
+        fields = ["id", "video", "saved_at"]

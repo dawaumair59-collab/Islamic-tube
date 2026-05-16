@@ -42,6 +42,7 @@ export interface Comment {
   text: string;
   time: string;
   likes: number;
+  userId?: string;
 }
 
 export type NotificationType =
