@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "corsheaders",
     # Local apps
     "apps.accounts",
+    "apps.videos",
     "apps.core",
 ]
 
