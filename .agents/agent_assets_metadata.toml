@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "IvMG7gQxi-PT0d-QVHcAZ"
@@ -24,3 +23,9 @@ id = "6wp0ytKZa2W9BVx45S5D-"
 uri = "file://artifacts/mobile/assets/images/hero-banner.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "gg_ZeWGOsMv1Oy3RsafNS"
+uri = "file://expo-qr.png"
+type = "image"
+title = "Scan with Expo Go"
