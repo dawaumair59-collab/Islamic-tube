@@ -12,8 +12,9 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
   Platform,
@@ -31,7 +32,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { SHORTS, Video } from "@/data/mockData";
+import type { Video } from "@/data/mockData";
+import { videosApi, subscriptionsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -49,15 +51,38 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
     transform: [{ scale: likeScale.value }],
   }));
 
-  const handleLike = () => {
-    setLiked((prev) => {
-      setLikes((l) => (prev ? l - 1 : l + 1));
-      return !prev;
-    });
+  const handleLike = async () => {
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikes((l) => (wasLiked ? l - 1 : l + 1));
     likeScale.value = withSequence(
       withSpring(1.4, { damping: 6 }),
       withSpring(1, { damping: 8 })
     );
+    try {
+      if (wasLiked) {
+        await videosApi.unlike(item.id);
+      } else {
+        await videosApi.like(item.id);
+      }
+    } catch {
+      setLiked(wasLiked);
+      setLikes((l) => (wasLiked ? l + 1 : l - 1));
+    }
+  };
+
+  const handleFollow = async () => {
+    const wasFollowing = following;
+    setFollowing(!wasFollowing);
+    try {
+      if (wasFollowing) {
+        await subscriptionsApi.unfollow(item.scholarId);
+      } else {
+        await subscriptionsApi.follow(item.scholarId);
+      }
+    } catch {
+      setFollowing(wasFollowing);
+    }
   };
 
   const bottomPad = Platform.OS === "web" ? 84 + 34 : 90 + insets.bottom;
@@ -75,7 +100,6 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <ChevronLeft size={26} color="#fff" strokeWidth={2} />
@@ -86,7 +110,6 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
         </TouchableOpacity>
       </View>
 
-      {/* Right action buttons */}
       <View style={[styles.actions, { bottom: bottomPad + 60 }]}>
         <View style={styles.scholarAvatarWrapper}>
           <Image source={item.scholarAvatar} style={styles.scholarAvatar} contentFit="cover" />
@@ -95,7 +118,7 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
               styles.followBtn,
               { backgroundColor: following ? colors.mutedForeground : colors.primary },
             ]}
-            onPress={() => setFollowing((f) => !f)}
+            onPress={handleFollow}
           >
             {following ? (
               <Check size={10} color="#fff" strokeWidth={3} />
@@ -121,7 +144,7 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
 
         <TouchableOpacity style={styles.actionBtn}>
           <MessageCircle size={28} color="#fff" strokeWidth={1.8} />
-          <Text style={styles.actionCount}>892</Text>
+          <Text style={styles.actionCount}>Comment</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionBtn}>
@@ -134,7 +157,6 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
         </TouchableOpacity>
       </View>
 
-      {/* Bottom info */}
       <View style={[styles.bottomInfo, { paddingBottom: bottomPad }]}>
         <TouchableOpacity
           onPress={() => router.push(`/channel/${item.scholarId}`)}
@@ -154,7 +176,17 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
 }
 
 export default function ShortsScreen() {
+  const [shorts, setShorts] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    videosApi
+      .shorts()
+      .then(setShorts)
+      .catch(() => setShorts([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -167,10 +199,26 @@ export default function ShortsScreen() {
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 });
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
+
+  if (shorts.length === 0) {
+    return (
+      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+        <Text style={{ color: "#fff", fontSize: 15 }}>No shorts available</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
-        data={SHORTS}
+        data={shorts}
         keyExtractor={(item) => item.id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
@@ -232,11 +280,7 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   actionBtn: { alignItems: "center", gap: 3 },
-  actionCount: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  actionCount: { color: "#fff", fontSize: 12, fontWeight: "600" },
   bottomInfo: {
     position: "absolute",
     bottom: 0,

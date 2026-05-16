@@ -7,6 +7,8 @@ import React, {
   useState,
 } from "react";
 
+import { authApi, saveTokens, clearTokens } from "@/services/api";
+
 export interface User {
   id: string;
   name: string;
@@ -32,56 +34,69 @@ const AuthContext = createContext<AuthContextValue>({
   register: async () => false,
 });
 
-const AUTH_KEY = "islamictube_user";
+const USER_KEY = "islamictube_user";
 
-const MOCK_USER: User = {
-  id: "u1",
-  name: "Ahmed Al-Farsi",
-  email: "ahmed@islamictube.com",
-  avatar: require("../assets/images/placeholder-scholar.png"),
-  role: "user",
-};
+function apiUserToUser(u: any): User {
+  return {
+    id: String(u.id ?? ""),
+    name: u.full_name ?? u.username ?? "User",
+    email: u.email ?? "",
+    avatar: u.avatar_url ?? "",
+    role: u.is_scholar ? "scholar" : "user",
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(AUTH_KEY).then((val) => {
+    AsyncStorage.getItem(USER_KEY).then((val) => {
       if (val) {
-        try {
-          setUser(JSON.parse(val));
-        } catch {
-          setUser(null);
-        }
+        try { setUser(JSON.parse(val)); } catch { setUser(null); }
       }
       setIsLoading(false);
     });
   }, []);
 
-  const login = useCallback(async (email: string, _password: string) => {
-    await new Promise((r) => setTimeout(r, 1000));
-    const u = { ...MOCK_USER, email };
+  const persist = async (u: User) => {
     setUser(u);
-    await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
-    return true;
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(u));
+  };
+
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const data = await authApi.login(email, password);
+      if (!data.success) return false;
+      await saveTokens(data.tokens.access, data.tokens.refresh);
+      await persist(apiUserToUser(data.user));
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const logout = useCallback(async () => {
+    try { await authApi.logout(); } catch {}
+    await clearTokens();
     setUser(null);
-    await AsyncStorage.removeItem(AUTH_KEY);
+    await AsyncStorage.removeItem(USER_KEY);
   }, []);
 
-  const register = useCallback(
-    async (name: string, email: string, _password: string) => {
-      await new Promise((r) => setTimeout(r, 1200));
-      const u = { ...MOCK_USER, name, email };
-      setUser(u);
-      await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(u));
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    try {
+      const username =
+        email.split("@")[0].replace(/[^a-z0-9]/gi, "").toLowerCase() +
+        Math.floor(Math.random() * 900 + 100);
+      const data = await authApi.register(name, username, email, password);
+      if (!data.success) return false;
+      await saveTokens(data.tokens.access, data.tokens.refresh);
+      await persist(apiUserToUser(data.user));
       return true;
-    },
-    []
-  );
+    } catch {
+      return false;
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, register }}>

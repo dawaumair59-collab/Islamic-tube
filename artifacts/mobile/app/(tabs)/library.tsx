@@ -1,7 +1,8 @@
 import { Plus, Search } from "lucide-react-native";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,18 +14,52 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PlaylistCard } from "@/components/PlaylistCard";
 import { VideoCard } from "@/components/VideoCard";
-import { PLAYLISTS, VIDEOS } from "@/data/mockData";
+import { PLAYLISTS } from "@/data/mockData";
+import type { Video } from "@/data/mockData";
+import { likesApi, videosApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 const TABS = ["Playlists", "History", "Saved", "Liked"];
 
 export default function LibraryScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("Playlists");
+  const [likedVideos, setLikedVideos] = useState<Video[]>([]);
+  const [historyVideos, setHistoryVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
+
+  useEffect(() => {
+    if (activeTab === "Liked") {
+      setLoading(true);
+      likesApi
+        .myLikes()
+        .then(setLikedVideos)
+        .catch(() => setLikedVideos([]))
+        .finally(() => setLoading(false));
+    }
+    if (activeTab === "History") {
+      setLoading(true);
+      videosApi
+        .list()
+        .then((all) => setHistoryVideos(all.slice(0, 8)))
+        .catch(() => setHistoryVideos([]))
+        .finally(() => setLoading(false));
+    }
+    if (activeTab === "Saved") {
+      setLoading(true);
+      videosApi
+        .list()
+        .then((all) => setHistoryVideos(all.slice(0, 6)))
+        .catch(() => setHistoryVideos([]))
+        .finally(() => setLoading(false));
+    }
+  }, [activeTab]);
 
   const renderContent = () => {
     if (activeTab === "Playlists") {
@@ -49,27 +84,45 @@ export default function LibraryScreen() {
               <Text style={styles.clearBtn}>Clear</Text>
             </TouchableOpacity>
           </View>
-          {VIDEOS.slice(0, 4).map((video) => (
-            <VideoCard key={video.id} video={video} horizontal />
-          ))}
+          {loading ? (
+            <ActivityIndicator color="#2563EB" style={styles.loader} />
+          ) : historyVideos.length === 0 ? (
+            <Text style={styles.emptyText}>No watch history yet</Text>
+          ) : (
+            historyVideos.map((video) => (
+              <VideoCard key={video.id} video={video} horizontal />
+            ))
+          )}
         </View>
       );
     }
     if (activeTab === "Saved") {
       return (
         <View style={styles.section}>
-          {VIDEOS.slice(2, 5).map((video) => (
-            <VideoCard key={video.id} video={video} horizontal />
-          ))}
+          {loading ? (
+            <ActivityIndicator color="#2563EB" style={styles.loader} />
+          ) : historyVideos.length === 0 ? (
+            <Text style={styles.emptyText}>No saved videos yet</Text>
+          ) : (
+            historyVideos.map((video) => (
+              <VideoCard key={video.id} video={video} horizontal />
+            ))
+          )}
         </View>
       );
     }
     if (activeTab === "Liked") {
       return (
         <View style={styles.section}>
-          {VIDEOS.slice(1, 4).map((video) => (
-            <VideoCard key={video.id} video={video} horizontal />
-          ))}
+          {loading ? (
+            <ActivityIndicator color="#2563EB" style={styles.loader} />
+          ) : likedVideos.length === 0 ? (
+            <Text style={styles.emptyText}>No liked videos yet</Text>
+          ) : (
+            likedVideos.map((video) => (
+              <VideoCard key={video.id} video={video} horizontal />
+            ))
+          )}
         </View>
       );
     }
@@ -163,4 +216,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   createPlaylistText: { fontSize: 14, fontWeight: "600", color: "#2563EB" },
+  loader: { marginTop: 24 },
+  emptyText: { fontSize: 14, color: "#606060", textAlign: "center", paddingTop: 24 },
 });

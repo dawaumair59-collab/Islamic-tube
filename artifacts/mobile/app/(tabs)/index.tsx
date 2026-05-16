@@ -6,8 +6,9 @@ import {
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Platform,
   RefreshControl,
@@ -22,7 +23,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { ContinueWatchingShelf } from "@/components/ContinueWatchingShelf";
 import { VideoCard } from "@/components/VideoCard";
-import { CATEGORIES, LIVE_STREAMS, SHORTS, VIDEOS } from "@/data/mockData";
+import { CATEGORIES, LIVE_STREAMS } from "@/data/mockData";
+import type { Video } from "@/data/mockData";
+import { videosApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -34,30 +37,52 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [allVideos, setAllVideos] = useState<Video[]>([]);
+  const [shorts, setShorts] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 : insets.bottom;
 
+  const fetchData = async () => {
+    try {
+      const [videos, shortsData] = await Promise.all([
+        videosApi.list(),
+        videosApi.shorts(),
+      ]);
+      setAllVideos(videos);
+      setShorts(shortsData);
+    } catch {
+      // keep existing data on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
+
   const filteredVideos =
     selectedCategory === "All"
-      ? VIDEOS
+      ? allVideos.filter((v) => v.type !== "short")
       : selectedCategory === "Live"
       ? []
       : selectedCategory === "Shorts"
       ? []
-      : VIDEOS.filter((v) => v.category === selectedCategory);
+      : allVideos.filter((v) => v.category === selectedCategory && v.type !== "short");
 
-  const showShorts = selectedCategory === "All" || selectedCategory === "Shorts";
+  const displayShorts = selectedCategory === "All" || selectedCategory === "Shorts"
+    ? shorts
+    : [];
   const showLive = selectedCategory === "All" || selectedCategory === "Live";
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1200);
-  };
 
   return (
     <View style={styles.screen}>
-      {/* Top Navbar */}
       <View style={[styles.navbar, { paddingTop: topPad + 6 }]}>
         <View style={styles.navLeft}>
           <Moon size={18} color="#2563EB" fill="#2563EB" />
@@ -91,7 +116,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Category chips */}
       <View style={[styles.chipsBar, { borderBottomColor: "#E5E5E5" }]}>
         <CategoryFilter
           categories={CATEGORIES}
@@ -100,120 +124,125 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Feed */}
-      <ScrollView
-        style={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: bottomPad + 80, paddingTop: 8 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
-        }
-      >
-        {/* Continue Watching shelf */}
-        {selectedCategory === "All" && (
-          <ContinueWatchingShelf videos={VIDEOS} />
-        )}
+      {loading ? (
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator size="large" color="#2563EB" />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: bottomPad + 80, paddingTop: 8 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
+          }
+        >
+          {selectedCategory === "All" && (
+            <ContinueWatchingShelf videos={filteredVideos.slice(0, 5)} />
+          )}
 
-        {/* First 2 videos */}
-        {filteredVideos.slice(0, 2).map((video) => (
-          <VideoCard key={video.id} video={video} />
-        ))}
+          {filteredVideos.slice(0, 2).map((video) => (
+            <VideoCard key={video.id} video={video} />
+          ))}
 
-        {/* Shorts shelf */}
-        {showShorts && (
-          <View style={styles.shelf}>
-            <View style={styles.shelfHeader}>
-              <View style={styles.shelfLeft}>
-                <View style={styles.shortsDot} />
-                <Text style={styles.shelfTitle}>Shorts</Text>
-              </View>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/shorts")}>
-                <Text style={styles.seeAll}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.shortsRow}
-            >
-              {SHORTS.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={styles.shortsCard}
-                  activeOpacity={0.85}
-                  onPress={() => router.push("/(tabs)/shorts")}
-                >
-                  <View style={styles.shortsThumbWrap}>
-                    <Image source={s.thumbnail} style={styles.shortsThumb} contentFit="cover" />
-                    <View style={styles.shortsDurationBadge}>
-                      <Text style={styles.shortsDurationText}>{s.duration}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.shortsCardTitle} numberOfLines={2}>{s.title}</Text>
-                  <Text style={styles.shortsViews}>{s.views} views</Text>
+          {displayShorts.length > 0 && (
+            <View style={styles.shelf}>
+              <View style={styles.shelfHeader}>
+                <View style={styles.shelfLeft}>
+                  <View style={styles.shortsDot} />
+                  <Text style={styles.shelfTitle}>Shorts</Text>
+                </View>
+                <TouchableOpacity onPress={() => router.push("/(tabs)/shorts")}>
+                  <Text style={styles.seeAll}>See all</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Middle videos */}
-        {filteredVideos.slice(2, 4).map((video) => (
-          <VideoCard key={video.id} video={video} />
-        ))}
-
-        {/* Live section */}
-        {showLive && LIVE_STREAMS.filter((l) => l.isLive).length > 0 && (
-          <View style={styles.shelf}>
-            <View style={styles.shelfHeader}>
-              <View style={styles.shelfLeft}>
-                <View style={[styles.shortsDot, { backgroundColor: "#FF0000" }]} />
-                <Text style={styles.shelfTitle}>Live now</Text>
               </View>
-              <TouchableOpacity onPress={() => router.push("/live")}>
-                <Text style={styles.seeAll}>See all</Text>
-              </TouchableOpacity>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.shortsRow}
+              >
+                {displayShorts.map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={styles.shortsCard}
+                    activeOpacity={0.85}
+                    onPress={() => router.push("/(tabs)/shorts")}
+                  >
+                    <View style={styles.shortsThumbWrap}>
+                      <Image source={s.thumbnail} style={styles.shortsThumb} contentFit="cover" />
+                      <View style={styles.shortsDurationBadge}>
+                        <Text style={styles.shortsDurationText}>{s.duration}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.shortsCardTitle} numberOfLines={2}>{s.title}</Text>
+                    <Text style={styles.shortsViews}>{s.views} views</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.liveRow}
-            >
-              {LIVE_STREAMS.filter((l) => l.isLive).map((stream) => (
-                <TouchableOpacity
-                  key={stream.id}
-                  style={styles.liveCard}
-                  activeOpacity={0.85}
-                  onPress={() => router.push("/live")}
-                >
-                  <View style={styles.liveThumbWrap}>
-                    <Image source={stream.thumbnail} style={styles.liveThumb} contentFit="cover" />
-                    <View style={styles.liveBadge}>
-                      <View style={styles.liveBadgeDot} />
-                      <Text style={styles.liveBadgeText}>LIVE</Text>
-                    </View>
-                    <View style={styles.liveViewersPill}>
-                      <Text style={styles.liveViewersText}>{stream.viewers} watching</Text>
-                    </View>
-                  </View>
-                  <View style={styles.liveInfo}>
-                    <Image source={stream.scholarAvatar} style={styles.liveAvatar} contentFit="cover" />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.liveTitle} numberOfLines={2}>{stream.title}</Text>
-                      <Text style={styles.liveMeta}>{stream.scholar}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+          )}
 
-        {/* Remaining videos */}
-        {filteredVideos.slice(4).map((video) => (
-          <VideoCard key={video.id} video={video} />
-        ))}
-      </ScrollView>
+          {filteredVideos.slice(2, 4).map((video) => (
+            <VideoCard key={video.id} video={video} />
+          ))}
+
+          {showLive && LIVE_STREAMS.filter((l) => l.isLive).length > 0 && (
+            <View style={styles.shelf}>
+              <View style={styles.shelfHeader}>
+                <View style={styles.shelfLeft}>
+                  <View style={[styles.shortsDot, { backgroundColor: "#FF0000" }]} />
+                  <Text style={styles.shelfTitle}>Live now</Text>
+                </View>
+                <TouchableOpacity onPress={() => router.push("/live")}>
+                  <Text style={styles.seeAll}>See all</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.liveRow}
+              >
+                {LIVE_STREAMS.filter((l) => l.isLive).map((stream) => (
+                  <TouchableOpacity
+                    key={stream.id}
+                    style={styles.liveCard}
+                    activeOpacity={0.85}
+                    onPress={() => router.push("/live")}
+                  >
+                    <View style={styles.liveThumbWrap}>
+                      <Image source={stream.thumbnail} style={styles.liveThumb} contentFit="cover" />
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveBadgeDot} />
+                        <Text style={styles.liveBadgeText}>LIVE</Text>
+                      </View>
+                      <View style={styles.liveViewersPill}>
+                        <Text style={styles.liveViewersText}>{stream.viewers} watching</Text>
+                      </View>
+                    </View>
+                    <View style={styles.liveInfo}>
+                      <Image source={stream.scholarAvatar} style={styles.liveAvatar} contentFit="cover" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.liveTitle} numberOfLines={2}>{stream.title}</Text>
+                        <Text style={styles.liveMeta}>{stream.scholar}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {filteredVideos.slice(4).map((video) => (
+            <VideoCard key={video.id} video={video} />
+          ))}
+
+          {filteredVideos.length === 0 && !loading && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No videos found</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -254,6 +283,7 @@ const styles = StyleSheet.create({
   avatarText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   chipsBar: { borderBottomWidth: StyleSheet.hairlineWidth, backgroundColor: "#FFFFFF" },
   scroll: { flex: 1 },
+  loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   shelf: { marginBottom: 20 },
   shelfHeader: {
     flexDirection: "row",
@@ -321,4 +351,6 @@ const styles = StyleSheet.create({
   liveAvatar: { width: 28, height: 28, borderRadius: 14, flexShrink: 0 },
   liveTitle: { fontSize: 13, fontWeight: "500", lineHeight: 18, color: "#0F0F0F" },
   liveMeta: { fontSize: 11, marginTop: 2, color: "#606060" },
+  emptyState: { alignItems: "center", paddingTop: 60 },
+  emptyText: { fontSize: 15, color: "#606060" },
 });

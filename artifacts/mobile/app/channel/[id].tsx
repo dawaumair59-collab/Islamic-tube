@@ -9,8 +9,9 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,7 +23,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { VideoCard } from "@/components/VideoCard";
 import { PlaylistCard } from "@/components/PlaylistCard";
-import { PLAYLISTS, SCHOLARS, VIDEOS } from "@/data/mockData";
+import { PLAYLISTS } from "@/data/mockData";
+import type { Scholar, Video } from "@/data/mockData";
+import { scholarsApi, videosApi, subscriptionsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 
 const CHANNEL_TABS = ["Videos", "Shorts", "Playlists", "About"];
@@ -33,28 +36,84 @@ export default function ChannelScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("Videos");
   const [subscribed, setSubscribed] = useState(false);
-
-  const scholar = SCHOLARS.find((s) => s.id === id) ?? SCHOLARS[0];
-  const videos = VIDEOS.filter((v) => v.scholarId === scholar.id);
+  const [scholar, setScholar] = useState<Scholar | null>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [shorts, setShorts] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    Promise.all([
+      scholarsApi.getByUsername(id as string),
+      videosApi.list(),
+    ])
+      .then(([scholarData, allVideos]) => {
+        setScholar(scholarData);
+        const channelVideos = allVideos.filter((v) => v.scholarId === id);
+        setVideos(channelVideos.filter((v) => v.type !== "short"));
+        setShorts(channelVideos.filter((v) => v.type === "short"));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleSubscribe = async () => {
+    if (!id) return;
+    const wasSubscribed = subscribed;
+    setSubscribed(!wasSubscribed);
+    try {
+      if (wasSubscribed) {
+        await subscriptionsApi.unfollow(id as string);
+      } else {
+        await subscriptionsApi.follow(id as string);
+      }
+    } catch {
+      setSubscribed(wasSubscribed);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
+  if (!scholar) {
+    return (
+      <View style={[styles.screen, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <ChevronLeft size={24} color={colors.foreground} strokeWidth={2} />
+        </TouchableOpacity>
+        <Text style={{ color: colors.mutedForeground, marginTop: 40 }}>Channel not found</Text>
+      </View>
+    );
+  }
 
   const renderContent = () => {
     if (activeTab === "Videos") {
       return (
         <View style={styles.feedPad}>
-          {(videos.length > 0 ? videos : VIDEOS.slice(0, 3)).map((v) => (
-            <VideoCard key={v.id} video={v} />
-          ))}
+          {videos.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No videos yet</Text>
+          ) : (
+            videos.map((v) => <VideoCard key={v.id} video={v} />)
+          )}
         </View>
       );
     }
     if (activeTab === "Shorts") {
       return (
         <View style={styles.feedPad}>
-          {VIDEOS.slice(0, 2).map((v) => (
-            <VideoCard key={v.id} video={{ ...v, type: "short", duration: "0:58" }} />
-          ))}
+          {shorts.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No shorts yet</Text>
+          ) : (
+            shorts.map((v) => <VideoCard key={v.id} video={v} />)
+          )}
         </View>
       );
     }
@@ -76,7 +135,7 @@ export default function ChannelScreen() {
           </View>
           <View style={[styles.aboutCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Location</Text>
-            <Text style={[styles.aboutText, { color: colors.foreground }]}>{scholar.location}</Text>
+            <Text style={[styles.aboutText, { color: colors.foreground }]}>{scholar.location || "—"}</Text>
           </View>
           <View style={[styles.aboutCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>Stats</Text>
@@ -93,7 +152,6 @@ export default function ChannelScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Banner */}
         <View style={styles.bannerWrapper}>
           <Image source={scholar.avatar} style={styles.banner} contentFit="cover" />
           <LinearGradient colors={["rgba(0,0,0,0.2)", "rgba(0,0,0,0.7)"]} style={StyleSheet.absoluteFill} />
@@ -102,7 +160,6 @@ export default function ChannelScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Channel info */}
         <View style={[styles.channelInfo, { backgroundColor: colors.background }]}>
           <View style={styles.channelHeader}>
             <Image source={scholar.avatar} style={styles.avatar} contentFit="cover" />
@@ -126,7 +183,7 @@ export default function ChannelScreen() {
           <View style={styles.channelActions}>
             <TouchableOpacity
               style={[styles.subscribeBtn, { backgroundColor: subscribed ? colors.secondary : colors.primary }]}
-              onPress={() => setSubscribed((s) => !s)}
+              onPress={handleSubscribe}
             >
               {subscribed ? (
                 <Check size={16} color={colors.foreground} strokeWidth={2.5} />
@@ -148,7 +205,6 @@ export default function ChannelScreen() {
           </View>
         </View>
 
-        {/* Tabs */}
         <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
           {CHANNEL_TABS.map((tab) => (
             <TouchableOpacity
@@ -194,4 +250,5 @@ const styles = StyleSheet.create({
   aboutCard: { borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, padding: 12, gap: 4 },
   aboutLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
   aboutText: { fontSize: 14, lineHeight: 20 },
+  emptyText: { fontSize: 14, textAlign: "center", paddingTop: 24 },
 });

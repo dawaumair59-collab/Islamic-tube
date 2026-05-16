@@ -17,8 +17,9 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -30,19 +31,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CommentSection } from "@/components/CommentSection";
 import { VideoCard } from "@/components/VideoCard";
-import { VIDEOS } from "@/data/mockData";
+import type { Video } from "@/data/mockData";
+import { videosApi, subscriptionsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 export default function WatchScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
-  const video = VIDEOS.find((v) => v.id === id) ?? VIDEOS[0];
-  const related = VIDEOS.filter((v) => v.id !== video.id);
+  const [video, setVideo] = useState<Video | null>(null);
+  const [related, setRelated] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(video.likes);
+  const [likes, setLikes] = useState(0);
   const [subscribed, setSubscribed] = useState(false);
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -50,18 +55,73 @@ export default function WatchScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const handleLike = () => {
-    setLiked((prev) => {
-      setLikes((l) => (prev ? l - 1 : l + 1));
-      return !prev;
-    });
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    Promise.all([
+      videosApi.detail(id),
+      videosApi.list(),
+    ])
+      .then(([detail, all]) => {
+        setVideo(detail);
+        setLikes(detail.likes);
+        setRelated(all.filter((v) => v.id !== String(id)).slice(0, 10));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleLike = async () => {
+    if (!video) return;
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikes((l) => (wasLiked ? l - 1 : l + 1));
+    try {
+      if (wasLiked) {
+        await videosApi.unlike(video.id);
+      } else {
+        await videosApi.like(video.id);
+      }
+    } catch {
+      setLiked(wasLiked);
+      setLikes((l) => (wasLiked ? l + 1 : l - 1));
+    }
   };
+
+  const handleSubscribe = async () => {
+    if (!video?.scholarId) return;
+    const wasSubscribed = subscribed;
+    setSubscribed(!wasSubscribed);
+    try {
+      if (wasSubscribed) {
+        await subscriptionsApi.unfollow(video.scholarId);
+      } else {
+        await subscriptionsApi.follow(video.scholarId);
+      }
+    } catch {
+      setSubscribed(wasSubscribed);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
+  if (!video) {
+    return (
+      <View style={[styles.screen, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <Text style={{ color: colors.mutedForeground }}>Video not found</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-
-        {/* Video Player */}
         <View style={styles.playerWrapper}>
           <Image source={video.thumbnail} style={styles.playerThumb} contentFit="cover" />
           <LinearGradient
@@ -69,7 +129,6 @@ export default function WatchScreen() {
             style={StyleSheet.absoluteFill}
           />
 
-          {/* Top controls */}
           <View style={[styles.playerTop, { paddingTop: topPad + 4 }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <ChevronDown size={24} color="#fff" strokeWidth={2} />
@@ -84,7 +143,6 @@ export default function WatchScreen() {
             </View>
           </View>
 
-          {/* Center play/pause */}
           <TouchableOpacity style={styles.playCenter} onPress={() => setIsPlaying((p) => !p)}>
             <View style={styles.playCircle}>
               {isPlaying ? (
@@ -95,13 +153,12 @@ export default function WatchScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* Bottom controls */}
           <View style={styles.playerBottom}>
             <View style={[styles.progressBar, { backgroundColor: "rgba(255,255,255,0.3)" }]}>
               <View style={[styles.progressFill, { backgroundColor: colors.primary, width: "35%" }]} />
             </View>
             <View style={styles.playerControls}>
-              <Text style={styles.timeText}>15:42 / {video.duration}</Text>
+              <Text style={styles.timeText}>0:00 / {video.duration}</Text>
               <View style={styles.rightControls}>
                 <TouchableOpacity style={styles.playerIconBtn}>
                   <Settings size={18} color="#fff" strokeWidth={1.8} />
@@ -121,7 +178,6 @@ export default function WatchScreen() {
             {video.views} views · {video.createdAt}
           </Text>
 
-          {/* Action buttons */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actions}>
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: liked ? colors.accent : colors.secondary }]}
@@ -138,7 +194,10 @@ export default function WatchScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.secondary }]}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+              onPress={() => setShowComments((s) => !s)}
+            >
               <MessageCircle size={18} color={colors.foreground} strokeWidth={1.8} />
               <Text style={[styles.actionLabel, { color: colors.foreground }]}>Comment</Text>
             </TouchableOpacity>
@@ -159,7 +218,6 @@ export default function WatchScreen() {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* Scholar card */}
           <TouchableOpacity
             style={[styles.scholarCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => router.push(`/channel/${video.scholarId}`)}
@@ -170,16 +228,18 @@ export default function WatchScreen() {
                 <Text style={[styles.scholarName, { color: colors.foreground }]}>{video.scholar}</Text>
                 <BadgeCheck size={15} color={colors.primary} fill={colors.primary} strokeWidth={0} />
               </View>
-              <Text style={[styles.subscriberCount, { color: colors.mutedForeground }]}>
-                {video.subscribers} subscribers
-              </Text>
+              {video.subscribers && (
+                <Text style={[styles.subscriberCount, { color: colors.mutedForeground }]}>
+                  {video.subscribers} subscribers
+                </Text>
+              )}
             </View>
             <TouchableOpacity
               style={[
                 styles.subscribeBtn,
                 { backgroundColor: subscribed ? colors.secondary : colors.primary },
               ]}
-              onPress={() => setSubscribed((s) => !s)}
+              onPress={handleSubscribe}
             >
               <Text style={[styles.subscribeBtnText, { color: subscribed ? colors.foreground : "#fff" }]}>
                 {subscribed ? "Subscribed" : "Subscribe"}
@@ -187,25 +247,25 @@ export default function WatchScreen() {
             </TouchableOpacity>
           </TouchableOpacity>
 
-          {/* Description */}
-          <TouchableOpacity
-            style={[styles.descCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => setShowFullDesc((s) => !s)}
-          >
-            <Text style={[styles.descText, { color: colors.foreground }]} numberOfLines={showFullDesc ? undefined : 3}>
-              {video.description}
-            </Text>
-            <Text style={[styles.descToggle, { color: colors.primary }]}>
-              {showFullDesc ? "Show less" : "Show more"}
-            </Text>
-          </TouchableOpacity>
+          {video.description ? (
+            <TouchableOpacity
+              style={[styles.descCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => setShowFullDesc((s) => !s)}
+            >
+              <Text style={[styles.descText, { color: colors.foreground }]} numberOfLines={showFullDesc ? undefined : 3}>
+                {video.description}
+              </Text>
+              <Text style={[styles.descToggle, { color: colors.primary }]}>
+                {showFullDesc ? "Show less" : "Show more"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
 
-          {/* Comments toggle */}
           <TouchableOpacity
             style={[styles.commentsToggle, { borderColor: colors.border }]}
             onPress={() => setShowComments((s) => !s)}
           >
-            <Text style={[styles.commentsToggleText, { color: colors.foreground }]}>Comments (892)</Text>
+            <Text style={[styles.commentsToggleText, { color: colors.foreground }]}>Comments</Text>
             {showComments ? (
               <ChevronUp size={20} color={colors.mutedForeground} strokeWidth={1.8} />
             ) : (
@@ -213,7 +273,7 @@ export default function WatchScreen() {
             )}
           </TouchableOpacity>
 
-          {showComments && <CommentSection />}
+          {showComments && <CommentSection videoId={video.id} />}
 
           <Text style={[styles.relatedTitle, { color: colors.foreground }]}>Related Videos</Text>
           {related.map((v) => (

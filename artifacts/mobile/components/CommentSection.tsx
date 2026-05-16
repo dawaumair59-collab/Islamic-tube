@@ -1,7 +1,8 @@
 import { Send, ThumbsUp } from "lucide-react-native";
 import { Image } from "expo-image";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -9,8 +10,10 @@ import {
   View,
 } from "react-native";
 
-import { COMMENTS, Comment } from "@/data/mockData";
+import type { Comment } from "@/data/mockData";
+import { commentsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 
 function CommentItem({ comment }: { comment: Comment }) {
   const colors = useColors();
@@ -60,14 +63,47 @@ function CommentItem({ comment }: { comment: Comment }) {
   );
 }
 
-export function CommentSection() {
+interface Props {
+  videoId: string;
+}
+
+export function CommentSection({ videoId }: Props) {
   const colors = useColors();
+  const { user } = useAuth();
   const [input, setInput] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+
+  useEffect(() => {
+    if (!videoId) return;
+    setLoading(true);
+    commentsApi
+      .list(videoId)
+      .then(setComments)
+      .catch(() => setComments([]))
+      .finally(() => setLoading(false));
+  }, [videoId]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || posting) return;
+    setPosting(true);
+    try {
+      const newComment = await commentsApi.create(videoId, text);
+      setComments((prev) => [newComment, ...prev]);
+      setInput("");
+    } catch {
+      // silently fail — user must be authenticated
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: colors.foreground }]}>
-        Comments ({COMMENTS.length})
+        Comments ({comments.length})
       </Text>
       <View style={[styles.inputRow, { borderColor: colors.border }]}>
         <TextInput
@@ -79,16 +115,25 @@ export function CommentSection() {
           multiline
         />
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+          style={[styles.sendBtn, { backgroundColor: colors.primary, opacity: posting ? 0.6 : 1 }]}
           activeOpacity={0.8}
-          onPress={() => setInput("")}
+          onPress={handleSend}
+          disabled={posting}
         >
           <Send size={14} color="#fff" strokeWidth={2} />
         </TouchableOpacity>
       </View>
-      {COMMENTS.map((comment) => (
-        <CommentItem key={comment.id} comment={comment} />
-      ))}
+      {loading ? (
+        <ActivityIndicator size="small" color="#2563EB" style={{ marginTop: 12 }} />
+      ) : comments.length === 0 ? (
+        <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+          No comments yet. Be the first!
+        </Text>
+      ) : (
+        comments.map((comment) => (
+          <CommentItem key={comment.id} comment={comment} />
+        ))
+      )}
     </View>
   );
 }
@@ -114,6 +159,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  emptyText: { fontSize: 13, textAlign: "center", paddingVertical: 16 },
   comment: { flexDirection: "row", gap: 10, marginBottom: 14 },
   avatar: { width: 32, height: 32, borderRadius: 16, flexShrink: 0 },
   commentBody: { flex: 1, gap: 3 },

@@ -1,8 +1,9 @@
 import { Clock, CornerUpLeft, Search, TrendingUp } from "lucide-react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Platform,
   ScrollView,
@@ -14,20 +15,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SearchBar } from "@/components/SearchBar";
-import { CATEGORIES, VIDEOS, Video } from "@/data/mockData";
+import { CATEGORIES } from "@/data/mockData";
+import type { Video } from "@/data/mockData";
+import { searchApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 16 * 2 - 8) / 2;
-
-const TRENDING_SEARCHES = [
-  "Surah Al-Baqarah",
-  "Prayer guide",
-  "Sheikh Omar Suleiman",
-  "Ramadan tips",
-  "Islamic history",
-  "Quran recitation",
-];
 
 const SEARCH_HISTORY = ["Mufti Menk lectures", "How to make dua", "Seerah series"];
 
@@ -57,21 +51,54 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [selectedCat, setSelectedCat] = useState("All");
+  const [results, setResults] = useState<Video[]>([]);
+  const [trendingTerms, setTrendingTerms] = useState<string[]>([]);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
 
-  const results =
-    query.length > 0
-      ? VIDEOS.filter(
-          (v) =>
-            v.title.toLowerCase().includes(query.toLowerCase()) ||
-            v.scholar.toLowerCase().includes(query.toLowerCase()) ||
-            v.category.toLowerCase().includes(query.toLowerCase())
-        )
-      : [];
+  useEffect(() => {
+    searchApi.trending().then(setTrendingTerms).catch(() => {});
+  }, []);
 
-  const showResults = query.length > 0;
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (query.length < 2) {
+      setResults([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const data = await searchApi.search(query);
+        setResults(data.videos);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  const filteredResults =
+    selectedCat === "All"
+      ? results
+      : results.filter((v) => v.category === selectedCat);
+
+  const showResults = query.length >= 2;
+  const displayTrending = trendingTerms.length > 0 ? trendingTerms : [
+    "Surah Al-Baqarah",
+    "Prayer guide",
+    "Sheikh Omar Suleiman",
+    "Ramadan tips",
+    "Islamic history",
+    "Quran recitation",
+  ];
 
   return (
     <View style={styles.screen}>
@@ -105,7 +132,11 @@ export default function SearchScreen() {
             ))}
           </ScrollView>
 
-          {results.length === 0 ? (
+          {searching ? (
+            <View style={styles.loadingCenter}>
+              <ActivityIndicator color="#2563EB" />
+            </View>
+          ) : filteredResults.length === 0 ? (
             <View style={styles.emptyState}>
               <Search size={48} color="#909090" strokeWidth={1.5} />
               <Text style={styles.emptyTitle}>No results found</Text>
@@ -113,9 +144,9 @@ export default function SearchScreen() {
             </View>
           ) : (
             <>
-              <Text style={styles.resultCount}>{results.length} results for "{query}"</Text>
+              <Text style={styles.resultCount}>{filteredResults.length} results for "{query}"</Text>
               <View style={styles.grid}>
-                {results.map((video) => (
+                {filteredResults.map((video) => (
                   <GridVideoCard key={video.id} video={video} />
                 ))}
               </View>
@@ -152,7 +183,7 @@ export default function SearchScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Trending</Text>
             <View style={styles.trendingGrid}>
-              {TRENDING_SEARCHES.map((t) => (
+              {displayTrending.map((t) => (
                 <TouchableOpacity
                   key={t}
                   style={styles.trendingChip}
@@ -204,6 +235,7 @@ const styles = StyleSheet.create({
   catRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   catChipText: { fontSize: 12, fontWeight: "500" },
+  loadingCenter: { alignItems: "center", paddingTop: 40 },
   resultCount: { paddingHorizontal: 16, fontSize: 12, marginBottom: 8, color: "#606060" },
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8 },
   gridCard: { gap: 5, marginBottom: 4 },
