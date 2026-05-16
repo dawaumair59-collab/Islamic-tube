@@ -274,12 +274,16 @@ export default function WatchScreen() {
           </TouchableOpacity>
 
           {showComments && <CommentSection videoId={video.id} />}
-
-          <Text style={[styles.relatedTitle, { color: colors.foreground }]}>Related Videos</Text>
-          {related.map((v) => (
-            <VideoCard key={v.id} video={v} horizontal />
-          ))}
         </View>
+
+        {related.length > 0 && (
+          <View style={styles.relatedSection}>
+            <Text style={[styles.relatedTitle, { color: colors.foreground }]}>Related Videos</Text>
+            {related.map((v) => (
+              <VideoCard key={v.id} video={v} />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -341,7 +345,8 @@ const styles = StyleSheet.create({
   },
   timeText: { color: "#fff", fontSize: 12 },
   rightControls: { flexDirection: "row", gap: 4 },
-  content: { padding: 16, gap: 14 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, gap: 14 },
+  relatedSection: { paddingBottom: 8 },
   title: { fontSize: 16, fontWeight: "700", lineHeight: 22 },
   statsText: { fontSize: 13 },
   actions: { gap: 8, paddingVertical: 2 },
@@ -386,5 +391,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   commentsToggleText: { fontSize: 15, fontWeight: "700" },
-  relatedTitle: { fontSize: 15, fontWeight: "700", marginTop: 4 },
+  relatedTitle: { fontSize: 15, fontWeight: "700", paddingHorizontal: 12, paddingTop: 12, paddingBottom: 6 },
 });
