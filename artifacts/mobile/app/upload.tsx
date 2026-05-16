@@ -8,6 +8,9 @@ import {
   FileVideo,
   Pencil,
   Trash2,
+  Globe,
+  Link,
+  Lock,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
@@ -71,6 +74,7 @@ export default function UploadScreen() {
   const [selectedCategory, setSelectedCategory] = useState("Quran");
   const [selectedType, setSelectedType] = useState(initialType);
   const [tags, setTags] = useState("");
+  const [visibility, setVisibility] = useState<"Public" | "Unlisted" | "Private">("Public");
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
@@ -562,6 +566,80 @@ export default function UploadScreen() {
             />
           </View>
 
+          {/* Visibility */}
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              Visibility
+            </Text>
+            <View style={styles.visRow}>
+              {(["Public", "Unlisted", "Private"] as const).map((opt) => {
+                const active = visibility === opt;
+                const icon =
+                  opt === "Public" ? (
+                    <Globe
+                      size={20}
+                      color={active ? colors.primary : colors.mutedForeground}
+                      strokeWidth={1.8}
+                    />
+                  ) : opt === "Unlisted" ? (
+                    <Link
+                      size={20}
+                      color={active ? colors.primary : colors.mutedForeground}
+                      strokeWidth={1.8}
+                    />
+                  ) : (
+                    <Lock
+                      size={20}
+                      color={active ? colors.primary : colors.mutedForeground}
+                      strokeWidth={1.8}
+                    />
+                  );
+                const subtitle =
+                  opt === "Public"
+                    ? "Everyone can watch"
+                    : opt === "Unlisted"
+                    ? "Only people with the link"
+                    : "Only you can watch";
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[
+                      styles.visCard,
+                      {
+                        borderColor: active ? colors.primary : colors.border,
+                        backgroundColor: active ? colors.accent : colors.secondary,
+                      },
+                    ]}
+                    onPress={() => setVisibility(opt)}
+                    activeOpacity={0.75}
+                  >
+                    {icon}
+                    <Text
+                      style={[
+                        styles.visLabel,
+                        {
+                          color: active ? colors.primary : colors.foreground,
+                          fontWeight: active ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {opt}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.visSub,
+                        { color: colors.mutedForeground },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {subtitle}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           {/* Upload progress */}
           {uploading && (
             <View
@@ -778,6 +856,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   catChipText: { fontSize: 13 },
+  visRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  visCard: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    gap: 6,
+  },
+  visLabel: {
+    fontSize: 13,
+    textAlign: "center",
+  },
+  visSub: {
+    fontSize: 10,
+    textAlign: "center",
+    lineHeight: 13,
+  },
   progressCard: {
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
