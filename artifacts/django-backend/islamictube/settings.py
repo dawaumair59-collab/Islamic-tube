@@ -1,14 +1,18 @@
+import os
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ------------------------------------------------------------------
-# SECURITY  (placeholder values — replace before production)
+# SECURITY — read from environment; defaults are for local dev only
 # ------------------------------------------------------------------
-SECRET_KEY = "dev-placeholder-secret-key-change-before-production-islamictube"
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "dev-insecure-key-set-DJANGO_SECRET_KEY-before-deploying",
+)
+DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 
 # ------------------------------------------------------------------
 # APPLICATIONS
@@ -20,12 +24,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Third-party
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
-    # Local apps
     "apps.accounts",
     "apps.videos",
     "apps.search",
@@ -67,7 +69,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "islamictube.wsgi.application"
 
 # ------------------------------------------------------------------
-# DATABASE  (SQLite for development)
+# DATABASE — SQLite for dev; set DATABASE_URL for production
 # ------------------------------------------------------------------
 DATABASES = {
     "default": {
@@ -76,14 +78,8 @@ DATABASES = {
     }
 }
 
-# ------------------------------------------------------------------
-# CUSTOM USER MODEL
-# ------------------------------------------------------------------
 AUTH_USER_MODEL = "accounts.User"
 
-# ------------------------------------------------------------------
-# PASSWORD VALIDATION
-# ------------------------------------------------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -91,14 +87,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# ------------------------------------------------------------------
-# INTERNATIONALISATION
-# ------------------------------------------------------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
-
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -117,25 +109,51 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("THROTTLE_ANON_RATE", "120/min"),
+        "user": os.environ.get("THROTTLE_USER_RATE", "300/min"),
+    },
 }
 
 # ------------------------------------------------------------------
 # SIMPLE JWT
 # ------------------------------------------------------------------
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
+    "ACCESS_TOKEN_LIFETIME":    timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME":   timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS":    True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "ALGORITHM": "HS256",
-    # Placeholder signing key — change before production
-    "SIGNING_KEY": "jwt-placeholder-signing-key-change-before-production",
+    "ALGORITHM":                "HS256",
+    "SIGNING_KEY": os.environ.get(
+        "JWT_SIGNING_KEY",
+        "jwt-insecure-key-set-JWT_SIGNING_KEY-before-deploying",
+    ),
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
+    "USER_ID_FIELD":  "id",
+    "USER_ID_CLAIM":  "user_id",
 }
 
 # ------------------------------------------------------------------
-# CORS  (allow all in development)
+# CORS — restrict via env var in production
 # ------------------------------------------------------------------
-CORS_ALLOW_ALL_ORIGINS = True
+_cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",")]
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# ------------------------------------------------------------------
+# PRODUCTION SECURITY HEADERS (only active when DEBUG=False)
+# ------------------------------------------------------------------
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True

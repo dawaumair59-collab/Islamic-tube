@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: "#FF0000",
+    backgroundColor: "#2563EB",
     alignItems: "center",
   },
   uploadBtnText: {

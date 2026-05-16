@@ -3,7 +3,6 @@ import axios from "axios";
 import { Platform } from "react-native";
 
 import type { Video, Scholar, Comment, Notification, NotificationType } from "@/data/mockData";
-import { VIDEOS, SHORTS } from "@/data/mockData";
 
 const PLACEHOLDER_THUMB = require("../assets/images/placeholder-thumbnail.png");
 const PLACEHOLDER_AVATAR = require("../assets/images/placeholder-scholar.png");
@@ -182,32 +181,18 @@ function paginatedList(data: any): any[] {
 
 export const videosApi = {
   list: async (params?: { category?: string; type?: string }): Promise<Video[]> => {
-    try {
-      const res = await apiClient.get("/videos/", {
-        params: {
-          category: params?.category?.toLowerCase(),
-          type: params?.type,
-        },
-      });
-      const videos = paginatedList(res.data).map(normalizeVideo);
-      if (videos.length > 0) return videos;
-    } catch {
-      // fall through to mock
-    }
-    if (params?.type === "short") return SHORTS;
-    if (params?.category) return VIDEOS.filter((v) => v.category === params.category);
-    return VIDEOS;
+    const res = await apiClient.get("/videos/", {
+      params: {
+        category: params?.category?.toLowerCase(),
+        type: params?.type,
+      },
+    });
+    return paginatedList(res.data).map(normalizeVideo);
   },
 
   shorts: async (): Promise<Video[]> => {
-    try {
-      const res = await apiClient.get("/videos/", { params: { type: "short" } });
-      const videos = paginatedList(res.data).map(normalizeVideo);
-      if (videos.length > 0) return videos;
-    } catch {
-      // fall through to mock
-    }
-    return SHORTS;
+    const res = await apiClient.get("/videos/", { params: { type: "short" } });
+    return paginatedList(res.data).map(normalizeVideo);
   },
 
   detail: async (id: string): Promise<Video> => {

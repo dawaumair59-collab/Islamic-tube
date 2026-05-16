@@ -103,6 +103,7 @@ def my_subscriptions(request):
 
     scholars = (
         User.objects.filter(id__in=scholar_ids, is_scholar=True)
+        .select_related("scholar_profile")
         .annotate(sub_count=Count("subscribers"))
         .order_by("-sub_count")
     )

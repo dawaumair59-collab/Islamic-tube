@@ -73,9 +73,10 @@ class Video(models.Model):
         db_table = "videos"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["status", "category"]),
-            models.Index(fields=["scholar", "status"]),
-            models.Index(fields=["video_type", "status"]),
+            models.Index(fields=["status", "visibility", "created_at"], name="video_feed_idx"),
+            models.Index(fields=["status", "category"], name="video_category_idx"),
+            models.Index(fields=["scholar", "status"], name="video_scholar_idx"),
+            models.Index(fields=["video_type", "status"], name="video_type_idx"),
         ]
 
     def __str__(self):
