@@ -28,7 +28,14 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow IslamicTube to access your videos for uploading.",
+          "cameraPermission": "Allow IslamicTube to access your camera for live streaming."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

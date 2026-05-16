@@ -8,34 +8,24 @@ import {
   StyleSheet,
   Animated,
   Easing,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
-import { Video, Clapperboard, Radio } from "lucide-react-native";
+import { Video, Clapperboard, Radio, CheckCircle, ChevronRight } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 
 interface CreateBottomSheetProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const OPTIONS = [
-  {
-    icon: <Clapperboard size={24} color="#0F0F0F" />,
-    emoji: "📱",
-    title: "Short Video",
-    subtitle: "Upload a short video (under 60 seconds)",
-  },
-  {
-    icon: <Video size={24} color="#0F0F0F" />,
-    emoji: "🎬",
-    title: "Long Video",
-    subtitle: "Upload a long video in HD quality",
-  },
-  {
-    icon: <Radio size={24} color="#FF0000" />,
-    emoji: "🔴",
-    title: "Go Live",
-    subtitle: "Start a live stream",
-  },
-];
+type PickStatus = "idle" | "picking" | "success" | "error";
+
+interface PickResult {
+  fileName: string;
+  duration: number | null;
+  fileSize: number | null;
+}
 
 export default function CreateBottomSheet({
   visible,
@@ -43,9 +33,15 @@ export default function CreateBottomSheet({
 }: CreateBottomSheetProps) {
   const slideAnim = React.useRef(new Animated.Value(300)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [pickStatus, setPickStatus] = React.useState<PickStatus>("idle");
+  const [pickResult, setPickResult] = React.useState<PickResult | null>(null);
+  const [activeOption, setActiveOption] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (visible) {
+      setPickStatus("idle");
+      setPickResult(null);
+      setActiveOption(null);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -77,49 +73,237 @@ export default function CreateBottomSheet({
     }
   }, [visible]);
 
+  const formatDuration = (ms: number | null) => {
+    if (!ms) return null;
+    const secs = Math.round(ms / 1000);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const formatSize = (bytes: number | null) => {
+    if (!bytes) return null;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const pickVideo = async (type: "short" | "long") => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your media library to upload videos.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    setActiveOption(type);
+    setPickStatus("picking");
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        allowsEditing: type === "short",
+        videoMaxDuration: type === "short" ? 60 : undefined,
+        quality: type === "long" ? 1 : 0.8,
+        allowsMultipleSelection: false,
+      });
+
+      if (result.canceled) {
+        setPickStatus("idle");
+        setActiveOption(null);
+        return;
+      }
+
+      const asset = result.assets[0];
+
+      if (type === "short" && asset.duration && asset.duration > 60000) {
+        setPickStatus("error");
+        Alert.alert(
+          "Video Too Long",
+          "Short videos must be under 60 seconds. Please choose a shorter clip.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setPickStatus("idle");
+                setActiveOption(null);
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      setPickResult({
+        fileName: asset.fileName ?? asset.uri.split("/").pop() ?? "video",
+        duration: asset.duration ?? null,
+        fileSize: asset.fileSize ?? null,
+      });
+      setPickStatus("success");
+    } catch {
+      setPickStatus("error");
+      Alert.alert("Error", "Something went wrong. Please try again.", [
+        {
+          text: "OK",
+          onPress: () => {
+            setPickStatus("idle");
+            setActiveOption(null);
+          },
+        },
+      ]);
+    }
+  };
+
+  const handleGoLive = () => {
+    onClose();
+    setTimeout(() => {
+      Alert.alert("Go Live", "Live streaming is coming soon!", [
+        { text: "OK" },
+      ]);
+    }, 300);
+  };
+
+  const handleClose = () => {
+    setPickStatus("idle");
+    setPickResult(null);
+    setActiveOption(null);
+    onClose();
+  };
+
+  const isLoading = pickStatus === "picking";
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <TouchableWithoutFeedback onPress={onClose}>
+      <TouchableWithoutFeedback onPress={handleClose}>
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]} />
       </TouchableWithoutFeedback>
 
       <Animated.View
-        style={[
-          styles.sheet,
-          { transform: [{ translateY: slideAnim }] },
-        ]}
+        style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
       >
         <View style={styles.handle} />
 
-        <Text style={styles.sheetTitle}>Create</Text>
-
-        {OPTIONS.map((option, index) => (
-          <TouchableOpacity
-            key={option.title}
-            style={[
-              styles.option,
-              index < OPTIONS.length - 1 && styles.optionBorder,
-            ]}
-            activeOpacity={0.7}
-            onPress={onClose}
-          >
-            <View style={styles.iconWrap}>{option.icon}</View>
-            <View style={styles.optionText}>
-              <Text style={styles.optionTitle}>{option.title}</Text>
-              <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+        {pickStatus === "success" && pickResult ? (
+          <>
+            <View style={styles.successWrap}>
+              <CheckCircle size={44} color="#00A86B" />
+              <Text style={styles.successTitle}>Video Selected!</Text>
+              <Text style={styles.successFile} numberOfLines={1}>
+                {pickResult.fileName}
+              </Text>
+              <View style={styles.metaRow}>
+                {pickResult.duration != null && (
+                  <Text style={styles.metaText}>
+                    {formatDuration(pickResult.duration)}
+                  </Text>
+                )}
+                {pickResult.fileSize != null && (
+                  <Text style={styles.metaText}>
+                    {formatSize(pickResult.fileSize)}
+                  </Text>
+                )}
+              </View>
             </View>
-          </TouchableOpacity>
-        ))}
+            <TouchableOpacity
+              style={styles.uploadBtn}
+              activeOpacity={0.8}
+              onPress={handleClose}
+            >
+              <Text style={styles.uploadBtnText}>Start Upload</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => {
+                setPickStatus("idle");
+                setPickResult(null);
+                setActiveOption(null);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelText}>Choose Different Video</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.sheetTitle}>Create</Text>
 
-        <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.8}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.option, styles.optionBorder]}
+              activeOpacity={0.7}
+              onPress={() => pickVideo("short")}
+              disabled={isLoading}
+            >
+              <View style={styles.iconWrap}>
+                {isLoading && activeOption === "short" ? (
+                  <ActivityIndicator size="small" color="#0F0F0F" />
+                ) : (
+                  <Clapperboard size={24} color="#0F0F0F" />
+                )}
+              </View>
+              <View style={styles.optionText}>
+                <Text style={styles.optionTitle}>Short Video</Text>
+                <Text style={styles.optionSubtitle}>
+                  Upload a short video (under 60 seconds)
+                </Text>
+              </View>
+              <ChevronRight size={18} color="#C0C0C0" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.option, styles.optionBorder]}
+              activeOpacity={0.7}
+              onPress={() => pickVideo("long")}
+              disabled={isLoading}
+            >
+              <View style={styles.iconWrap}>
+                {isLoading && activeOption === "long" ? (
+                  <ActivityIndicator size="small" color="#0F0F0F" />
+                ) : (
+                  <Video size={24} color="#0F0F0F" />
+                )}
+              </View>
+              <View style={styles.optionText}>
+                <Text style={styles.optionTitle}>Long Video</Text>
+                <Text style={styles.optionSubtitle}>
+                  Upload a long video in HD quality
+                </Text>
+              </View>
+              <ChevronRight size={18} color="#C0C0C0" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.option}
+              activeOpacity={0.7}
+              onPress={handleGoLive}
+              disabled={isLoading}
+            >
+              <View style={[styles.iconWrap, styles.liveIconWrap]}>
+                <Radio size={24} color="#FF0000" />
+              </View>
+              <View style={styles.optionText}>
+                <Text style={styles.optionTitle}>Go Live</Text>
+                <Text style={styles.optionSubtitle}>Start a live stream</Text>
+              </View>
+              <ChevronRight size={18} color="#C0C0C0" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={handleClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </Animated.View>
     </Modal>
   );
@@ -181,6 +365,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 16,
   },
+  liveIconWrap: {
+    backgroundColor: "#FFF0F0",
+  },
   optionText: {
     flex: 1,
   },
@@ -207,5 +394,46 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#0F0F0F",
+  },
+  successWrap: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+  successTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F0F0F",
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  successFile: {
+    fontSize: 13,
+    color: "#606060",
+    maxWidth: "90%",
+    textAlign: "center",
+  },
+  metaRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 8,
+  },
+  metaText: {
+    fontSize: 13,
+    color: "#909090",
+    fontWeight: "500",
+  },
+  uploadBtn: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: "#FF0000",
+    alignItems: "center",
+  },
+  uploadBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });
