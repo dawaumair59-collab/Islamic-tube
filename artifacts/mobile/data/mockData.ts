@@ -463,6 +463,20 @@ export const LIVE_STREAMS: LiveStream[] = [
   },
 ];
 
+export interface WatchProgress {
+  videoId: string;
+  progress: number; // 0.0 – 1.0
+  watchedAt: string;
+}
+
+export const CONTINUE_WATCHING: WatchProgress[] = [
+  { videoId: "v2", progress: 0.35, watchedAt: "Today" },
+  { videoId: "v4", progress: 0.72, watchedAt: "Yesterday" },
+  { videoId: "v1", progress: 0.18, watchedAt: "2 days ago" },
+  { videoId: "v6", progress: 0.55, watchedAt: "2 days ago" },
+  { videoId: "v5", progress: 0.91, watchedAt: "3 days ago" },
+];
+
 export const CATEGORIES = [
   "All",
   "Quran",

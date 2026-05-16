@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CategoryFilter } from "@/components/CategoryFilter";
+import { ContinueWatchingShelf } from "@/components/ContinueWatchingShelf";
 import { VideoCard } from "@/components/VideoCard";
 import { CATEGORIES, LIVE_STREAMS, SHORTS, VIDEOS } from "@/data/mockData";
 import { useColors } from "@/hooks/useColors";
@@ -108,6 +109,11 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
         }
       >
+        {/* Continue Watching shelf */}
+        {selectedCategory === "All" && (
+          <ContinueWatchingShelf videos={VIDEOS} />
+        )}
+
         {/* First 2 videos */}
         {filteredVideos.slice(0, 2).map((video) => (
           <VideoCard key={video.id} video={video} />
