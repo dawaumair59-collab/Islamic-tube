@@ -6,12 +6,17 @@ import {
   X,
   CheckCircle,
   FileVideo,
+  Pencil,
+  Trash2,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -20,7 +25,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
@@ -65,17 +74,59 @@ export default function UploadScreen() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
+  const [thumbnailPicking, setThumbnailPicking] = useState(false);
 
   const progressWidth = useSharedValue(0);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const progressStyle = useAnimatedStyle(() => ({ width: `${progressWidth.value}%` as `${number}%` }));
+  const progressStyle = useAnimatedStyle(
+    () => ({ width: `${progressWidth.value}%` as `${number}%` })
+  );
 
   const hasPickedFile = !!params.uri;
   const pickedFileName = params.fileName ?? null;
   const pickedDuration = params.duration ? Number(params.duration) : null;
   const pickedFileSize = params.fileSize ? Number(params.fileSize) : null;
+
+  const pickThumbnail = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library to add a thumbnail.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    setThumbnailPicking(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.9,
+        allowsMultipleSelection: false,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setThumbnailUri(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert("Error", "Could not open photo library. Please try again.");
+    } finally {
+      setThumbnailPicking(false);
+    }
+  };
+
+  const removeThumbnail = () => {
+    Alert.alert("Remove Thumbnail", "Are you sure you want to remove this thumbnail?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Remove", style: "destructive", onPress: () => setThumbnailUri(null) },
+    ]);
+  };
 
   const handleUpload = () => {
     if (!title) return;
@@ -103,13 +154,22 @@ export default function UploadScreen() {
           <View style={[styles.successIcon, { backgroundColor: colors.accent }]}>
             <CheckCircle size={64} color={colors.primary} strokeWidth={1.5} />
           </View>
-          <Text style={[styles.successTitle, { color: colors.foreground }]}>Video Uploaded!</Text>
+          <Text style={[styles.successTitle, { color: colors.foreground }]}>
+            Video Uploaded!
+          </Text>
           <Text style={[styles.successText, { color: colors.mutedForeground }]}>
             Your video is under review and will be published after approval.
           </Text>
           <TouchableOpacity
             style={[styles.doneBtn, { backgroundColor: colors.primary }]}
-            onPress={() => { setDone(false); setTitle(""); setDescription(""); setTags(""); router.back(); }}
+            onPress={() => {
+              setDone(false);
+              setTitle("");
+              setDescription("");
+              setTags("");
+              setThumbnailUri(null);
+              router.back();
+            }}
           >
             <Text style={styles.doneBtnText}>Back to Home</Text>
           </TouchableOpacity>
@@ -120,102 +180,309 @@ export default function UploadScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: topPad + 8,
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <X size={24} color={colors.foreground} strokeWidth={2} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Upload Video</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+          Upload Video
+        </Text>
         <TouchableOpacity onPress={handleUpload} disabled={!title || uploading}>
-          <Text style={[styles.publishBtn, { color: title && !uploading ? colors.primary : colors.mutedForeground }]}>
+          <Text
+            style={[
+              styles.publishBtn,
+              {
+                color:
+                  title && !uploading
+                    ? colors.primary
+                    : colors.mutedForeground,
+              },
+            ]}
+          >
             Publish
           </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 + bottomPad }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 + bottomPad }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
           {/* Video type toggle */}
           <View style={[styles.typeRow, { backgroundColor: colors.secondary }]}>
             {VIDEO_TYPES.map((t) => (
               <TouchableOpacity
                 key={t}
-                style={[styles.typeBtn, selectedType === t && { backgroundColor: colors.background }]}
+                style={[
+                  styles.typeBtn,
+                  selectedType === t && { backgroundColor: colors.background },
+                ]}
                 onPress={() => setSelectedType(t)}
               >
                 {t === "Short" ? (
-                  <Clapperboard size={16} color={selectedType === t ? colors.primary : colors.mutedForeground} strokeWidth={1.8} />
+                  <Clapperboard
+                    size={16}
+                    color={
+                      selectedType === t
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                    strokeWidth={1.8}
+                  />
                 ) : (
-                  <Film size={16} color={selectedType === t ? colors.primary : colors.mutedForeground} strokeWidth={1.8} />
+                  <Film
+                    size={16}
+                    color={
+                      selectedType === t
+                        ? colors.primary
+                        : colors.mutedForeground
+                    }
+                    strokeWidth={1.8}
+                  />
                 )}
-                <Text style={[styles.typeBtnText, { color: selectedType === t ? colors.primary : colors.mutedForeground, fontWeight: selectedType === t ? "700" : "400" }]}>
+                <Text
+                  style={[
+                    styles.typeBtnText,
+                    {
+                      color:
+                        selectedType === t
+                          ? colors.primary
+                          : colors.mutedForeground,
+                      fontWeight: selectedType === t ? "700" : "400",
+                    },
+                  ]}
+                >
                   {t}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Thumbnail upload */}
-          <TouchableOpacity style={[styles.uploadBox, { borderColor: colors.primary, backgroundColor: colors.accent }]}>
-            <LinearGradient colors={[colors.accent, colors.background]} style={StyleSheet.absoluteFill} />
-            <ImageIcon size={36} color={colors.primary} strokeWidth={1.5} />
-            <Text style={[styles.uploadBoxTitle, { color: colors.primary }]}>Add Thumbnail</Text>
-            <Text style={[styles.uploadBoxSub, { color: colors.mutedForeground }]}>Tap to upload (JPG, PNG · 16:9 ratio)</Text>
-          </TouchableOpacity>
+          {/* ── Thumbnail picker ── */}
+          <View style={styles.field}>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              Thumbnail
+            </Text>
 
-          {/* Video file — show picked file info if available, otherwise show picker */}
+            {thumbnailUri ? (
+              <View style={styles.thumbPreviewWrap}>
+                <Image
+                  source={{ uri: thumbnailUri }}
+                  style={styles.thumbPreview}
+                  resizeMode="cover"
+                />
+                {/* dim overlay with action buttons */}
+                <View style={styles.thumbOverlay}>
+                  <TouchableOpacity
+                    style={styles.thumbAction}
+                    onPress={pickThumbnail}
+                    activeOpacity={0.8}
+                  >
+                    <Pencil size={16} color="#fff" strokeWidth={2} />
+                    <Text style={styles.thumbActionText}>Change</Text>
+                  </TouchableOpacity>
+                  <View style={styles.thumbDivider} />
+                  <TouchableOpacity
+                    style={styles.thumbAction}
+                    onPress={removeThumbnail}
+                    activeOpacity={0.8}
+                  >
+                    <Trash2 size={16} color="#fff" strokeWidth={2} />
+                    <Text style={styles.thumbActionText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.uploadBox,
+                  {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.accent,
+                  },
+                ]}
+                onPress={pickThumbnail}
+                disabled={thumbnailPicking}
+                activeOpacity={0.75}
+              >
+                <LinearGradient
+                  colors={[colors.accent, colors.background]}
+                  style={StyleSheet.absoluteFill}
+                />
+                {thumbnailPicking ? (
+                  <ActivityIndicator size="large" color={colors.primary} />
+                ) : (
+                  <>
+                    <ImageIcon
+                      size={36}
+                      color={colors.primary}
+                      strokeWidth={1.5}
+                    />
+                    <Text
+                      style={[
+                        styles.uploadBoxTitle,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      Add Thumbnail
+                    </Text>
+                    <Text
+                      style={[
+                        styles.uploadBoxSub,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Tap to choose from library (16:9 ratio)
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Video file — show picked file info if available */}
           {hasPickedFile ? (
-            <View style={[styles.fileCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <View style={[styles.fileIconWrap, { backgroundColor: colors.accent }]}>
-                <FileVideo size={28} color={colors.primary} strokeWidth={1.5} />
+            <View
+              style={[
+                styles.fileCard,
+                {
+                  backgroundColor: colors.secondary,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.fileIconWrap,
+                  { backgroundColor: colors.accent },
+                ]}
+              >
+                <FileVideo
+                  size={28}
+                  color={colors.primary}
+                  strokeWidth={1.5}
+                />
               </View>
               <View style={styles.fileInfo}>
-                <Text style={[styles.fileName, { color: colors.foreground }]} numberOfLines={1}>
+                <Text
+                  style={[styles.fileName, { color: colors.foreground }]}
+                  numberOfLines={1}
+                >
                   {pickedFileName}
                 </Text>
                 <View style={styles.fileMeta}>
                   {pickedDuration != null && pickedDuration > 0 && (
-                    <Text style={[styles.fileMetaText, { color: colors.mutedForeground }]}>
+                    <Text
+                      style={[
+                        styles.fileMetaText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
                       {formatDuration(pickedDuration)}
                     </Text>
                   )}
                   {pickedFileSize != null && pickedFileSize > 0 && (
-                    <Text style={[styles.fileMetaText, { color: colors.mutedForeground }]}>
+                    <Text
+                      style={[
+                        styles.fileMetaText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
                       {formatSize(pickedFileSize)}
                     </Text>
                   )}
                 </View>
               </View>
-              <View style={[styles.fileReadyBadge, { backgroundColor: colors.primary }]}>
+              <View
+                style={[
+                  styles.fileReadyBadge,
+                  { backgroundColor: colors.primary },
+                ]}
+              >
                 <Text style={styles.fileReadyText}>Ready</Text>
               </View>
             </View>
           ) : (
-            <TouchableOpacity style={[styles.uploadBox, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+            <TouchableOpacity
+              style={[
+                styles.uploadBox,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.secondary,
+                },
+              ]}
+            >
               <Film size={36} color={colors.mutedForeground} strokeWidth={1.5} />
-              <Text style={[styles.uploadBoxTitle, { color: colors.foreground }]}>Select Video File</Text>
-              <Text style={[styles.uploadBoxSub, { color: colors.mutedForeground }]}>MP4, MOV, AVI · Max 4GB</Text>
+              <Text
+                style={[
+                  styles.uploadBoxTitle,
+                  { color: colors.foreground },
+                ]}
+              >
+                Select Video File
+              </Text>
+              <Text
+                style={[
+                  styles.uploadBoxSub,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                MP4, MOV, AVI · Max 4GB
+              </Text>
             </TouchableOpacity>
           )}
 
           {/* Title */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Title *</Text>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              Title *
+            </Text>
             <TextInput
-              style={[styles.textInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.secondary }]}
+              style={[
+                styles.textInput,
+                {
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                  backgroundColor: colors.secondary,
+                },
+              ]}
               placeholder="Enter a compelling title..."
               placeholderTextColor={colors.mutedForeground}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
             />
-            <Text style={[styles.charCount, { color: colors.mutedForeground }]}>{title.length}/100</Text>
+            <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
+              {title.length}/100
+            </Text>
           </View>
 
           {/* Description */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Description</Text>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              Description
+            </Text>
             <TextInput
-              style={[styles.textInput, styles.multilineInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.secondary }]}
+              style={[
+                styles.textInput,
+                styles.multilineInput,
+                {
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                  backgroundColor: colors.secondary,
+                },
+              ]}
               placeholder="Describe your video content..."
               placeholderTextColor={colors.mutedForeground}
               value={description}
@@ -225,20 +492,50 @@ export default function UploadScreen() {
               textAlignVertical="top"
               maxLength={500}
             />
-            <Text style={[styles.charCount, { color: colors.mutedForeground }]}>{description.length}/500</Text>
+            <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
+              {description.length}/500
+            </Text>
           </View>
 
           {/* Category */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              Category
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.catRow}
+            >
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.catChip, { backgroundColor: selectedCategory === cat ? colors.primary : colors.secondary, borderColor: selectedCategory === cat ? colors.primary : colors.border }]}
+                  style={[
+                    styles.catChip,
+                    {
+                      backgroundColor:
+                        selectedCategory === cat
+                          ? colors.primary
+                          : colors.secondary,
+                      borderColor:
+                        selectedCategory === cat
+                          ? colors.primary
+                          : colors.border,
+                    },
+                  ]}
                   onPress={() => setSelectedCategory(cat)}
                 >
-                  <Text style={[styles.catChipText, { color: selectedCategory === cat ? "#fff" : colors.foreground }]}>{cat}</Text>
+                  <Text
+                    style={[
+                      styles.catChipText,
+                      {
+                        color:
+                          selectedCategory === cat ? "#fff" : colors.foreground,
+                      },
+                    ]}
+                  >
+                    {cat}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -246,9 +543,18 @@ export default function UploadScreen() {
 
           {/* Tags */}
           <View style={styles.field}>
-            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Tags</Text>
+            <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
+              Tags
+            </Text>
             <TextInput
-              style={[styles.textInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.secondary }]}
+              style={[
+                styles.textInput,
+                {
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                  backgroundColor: colors.secondary,
+                },
+              ]}
               placeholder="islam, quran, lecture, reminder"
               placeholderTextColor={colors.mutedForeground}
               value={tags}
@@ -258,16 +564,54 @@ export default function UploadScreen() {
 
           {/* Upload progress */}
           {uploading && (
-            <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.progressCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
               <View style={styles.progressHeader}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.progressLabel, { color: colors.foreground }]}>Uploading...</Text>
-                <Text style={[styles.progressPercent, { color: colors.primary }]}>{progress}%</Text>
+                <Text
+                  style={[
+                    styles.progressLabel,
+                    { color: colors.foreground },
+                  ]}
+                >
+                  Uploading...
+                </Text>
+                <Text
+                  style={[
+                    styles.progressPercent,
+                    { color: colors.primary },
+                  ]}
+                >
+                  {progress}%
+                </Text>
               </View>
-              <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}>
-                <Animated.View style={[styles.progressFill, { backgroundColor: colors.primary }, progressStyle]} />
+              <View
+                style={[
+                  styles.progressTrack,
+                  { backgroundColor: colors.secondary },
+                ]}
+              >
+                <Animated.View
+                  style={[
+                    styles.progressFill,
+                    { backgroundColor: colors.primary },
+                    progressStyle,
+                  ]}
+                />
               </View>
-              <Text style={[styles.progressHint, { color: colors.mutedForeground }]}>
+              <Text
+                style={[
+                  styles.progressHint,
+                  { color: colors.mutedForeground },
+                ]}
+              >
                 Please keep this screen open while uploading.
               </Text>
             </View>
@@ -275,13 +619,31 @@ export default function UploadScreen() {
 
           {/* Submit */}
           <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: title && !uploading ? colors.primary : colors.secondary }]}
+            style={[
+              styles.submitBtn,
+              {
+                backgroundColor:
+                  title && !uploading ? colors.primary : colors.secondary,
+              },
+            ]}
             onPress={handleUpload}
             disabled={!title || uploading}
             activeOpacity={0.85}
           >
-            <Upload size={20} color={title && !uploading ? "#fff" : colors.mutedForeground} strokeWidth={1.8} />
-            <Text style={[styles.submitBtnText, { color: title && !uploading ? "#fff" : colors.mutedForeground }]}>
+            <Upload
+              size={20}
+              color={title && !uploading ? "#fff" : colors.mutedForeground}
+              strokeWidth={1.8}
+            />
+            <Text
+              style={[
+                styles.submitBtnText,
+                {
+                  color:
+                    title && !uploading ? "#fff" : colors.mutedForeground,
+                },
+              ]}
+            >
               {uploading ? "Uploading..." : "Publish Video"}
             </Text>
           </TouchableOpacity>
@@ -327,6 +689,49 @@ const styles = StyleSheet.create({
   },
   uploadBoxTitle: { fontSize: 15, fontWeight: "600" },
   uploadBoxSub: { fontSize: 12 },
+  thumbPreviewWrap: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  thumbPreview: {
+    width: "100%",
+    height: "100%",
+  },
+  thumbOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 0,
+  },
+  thumbAction: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 4,
+  },
+  thumbActionText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  thumbDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "rgba(255,255,255,0.35)",
+    marginHorizontal: 4,
+  },
   fileCard: {
     flexDirection: "row",
     alignItems: "center",
