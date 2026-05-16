@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { Platform } from "react-native";
 
-import type { Video, Scholar, Comment } from "@/data/mockData";
+import type { Video, Scholar, Comment, Notification, NotificationType } from "@/data/mockData";
 import { VIDEOS, SHORTS } from "@/data/mockData";
 
 const PLACEHOLDER_THUMB = require("../assets/images/placeholder-thumbnail.png");
@@ -263,5 +263,50 @@ export const likesApi = {
   myLikes: async (): Promise<Video[]> => {
     const res = await apiClient.get("/likes/my-likes/");
     return paginatedList(res.data).map((item: any) => normalizeVideo(item.video ?? item));
+  },
+};
+
+function normalizeApiNotification(raw: any): Notification {
+  return {
+    id: String(raw.id),
+    type: (raw.notification_type ?? "new_video") as NotificationType,
+    scholar: raw.sender_name ?? "IslamicTube",
+    scholarAvatar: raw.sender_avatar
+      ? imageSource(raw.sender_avatar, PLACEHOLDER_AVATAR)
+      : PLACEHOLDER_AVATAR,
+    message: raw.message ?? "",
+    time: raw.created_at ? formatRelativeTime(raw.created_at) : "",
+    read: raw.is_read ?? false,
+    thumbnail: raw.video_thumbnail
+      ? imageSource(raw.video_thumbnail, undefined)
+      : undefined,
+    videoId: raw.video ? String(raw.video) : undefined,
+  };
+}
+
+export const notificationsApi = {
+  list: async (): Promise<{ notifications: Notification[]; unreadCount: number }> => {
+    const res = await apiClient.get("/notifications/");
+    const data = res.data;
+    const notifications = (data.notifications ?? []).map(normalizeApiNotification);
+    return { notifications, unreadCount: data.unread_count ?? 0 };
+  },
+
+  unreadCount: async (): Promise<number> => {
+    const res = await apiClient.get("/notifications/unread-count/");
+    return res.data.unread_count ?? 0;
+  },
+
+  markRead: async (id: string): Promise<Notification> => {
+    const res = await apiClient.patch(`/notifications/${id}/read/`);
+    return normalizeApiNotification(res.data);
+  },
+
+  markAllRead: async (): Promise<void> => {
+    await apiClient.patch("/notifications/read-all/");
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/notifications/${id}/`);
   },
 };

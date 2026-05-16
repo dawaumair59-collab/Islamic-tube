@@ -27,6 +27,7 @@ import { CATEGORIES, LIVE_STREAMS } from "@/data/mockData";
 import type { Video } from "@/data/mockData";
 import { videosApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
+import { useNotifications } from "@/context/NotificationContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SHORTS_CARD_W = 110;
@@ -35,6 +36,7 @@ const LIVE_CARD_W = 260;
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { unreadCount } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [allVideos, setAllVideos] = useState<Video[]>([]);
@@ -102,8 +104,14 @@ export default function HomeScreen() {
             style={styles.navIcon}
             onPress={() => router.push("/notifications")}
           >
-            <Bell size={22} color="#0F0F0F" strokeWidth={1.8} />
-            <View style={styles.notifDot} />
+            <Bell size={22} color={colors.foreground} strokeWidth={1.8} />
+            {unreadCount > 0 && (
+              <View style={[styles.notifBadge, { backgroundColor: "#EF4444" }]}>
+                <Text style={styles.notifBadgeText}>
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navIcon}
@@ -261,16 +269,24 @@ const styles = StyleSheet.create({
   navLogo: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
   navRight: { flexDirection: "row", alignItems: "center" },
   navIcon: { padding: 8, position: "relative" },
-  notifDot: {
+  notifBadge: {
     position: "absolute",
-    top: 7,
-    right: 7,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: "#FF0000",
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
     borderColor: "#fff",
+  },
+  notifBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "700",
+    lineHeight: 11,
   },
   avatar: {
     width: 28,

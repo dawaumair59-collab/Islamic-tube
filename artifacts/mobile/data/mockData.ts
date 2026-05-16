@@ -44,15 +44,27 @@ export interface Comment {
   likes: number;
 }
 
+export type NotificationType =
+  | "upload"
+  | "live"
+  | "subscription"
+  | "new_video"
+  | "new_subscriber"
+  | "video_approved"
+  | "video_rejected"
+  | "new_comment"
+  | "new_like";
+
 export interface Notification {
   id: string;
-  type: "upload" | "live" | "subscription";
+  type: NotificationType;
   scholar: string;
-  scholarAvatar: string;
+  scholarAvatar: any;
   message: string;
   time: string;
   read: boolean;
-  thumbnail?: string;
+  thumbnail?: any;
+  videoId?: string;
 }
 
 export interface LiveStream {
