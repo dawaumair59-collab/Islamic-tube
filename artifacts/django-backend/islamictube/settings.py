@@ -28,6 +28,9 @@ INSTALLED_APPS = [
     # Local apps
     "apps.accounts",
     "apps.videos",
+    "apps.search",
+    "apps.subscriptions",
+    "apps.interactions",
     "apps.core",
 ]
 
