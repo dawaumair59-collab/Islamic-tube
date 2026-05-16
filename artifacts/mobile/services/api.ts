@@ -3,6 +3,7 @@ import axios from "axios";
 import { Platform } from "react-native";
 
 import type { Video, Scholar, Comment } from "@/data/mockData";
+import { VIDEOS, SHORTS } from "@/data/mockData";
 
 const PLACEHOLDER_THUMB = require("../assets/images/placeholder-thumbnail.png");
 const PLACEHOLDER_AVATAR = require("../assets/images/placeholder-scholar.png");
@@ -132,15 +133,15 @@ function paginatedList(data: any): any[] {
 
 export const videosApi = {
   list: async (params?: { category?: string; type?: string }): Promise<Video[]> => {
-    const res = await apiClient.get("/videos/", { params });
-    return paginatedList(res.data).map(normalizeVideo);
+    if (params?.type === "short") return SHORTS;
+    if (params?.category) {
+      return VIDEOS.filter((v) => v.category === params.category);
+    }
+    return VIDEOS;
   },
 
   shorts: async (): Promise<Video[]> => {
-    const res = await apiClient.get("/videos/", { params: { type: "short" } });
-    return paginatedList(res.data)
-      .filter((v: any) => v.video_type === "short")
-      .map(normalizeVideo);
+    return SHORTS;
   },
 
   detail: async (id: string): Promise<Video> => {
