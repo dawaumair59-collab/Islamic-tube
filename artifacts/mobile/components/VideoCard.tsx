@@ -183,13 +183,14 @@ const styles = StyleSheet.create({
   horizontal: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 10,
     paddingHorizontal: 12,
     backgroundColor: "#FFFFFF",
+    alignItems: "flex-start",
   },
   thumbHorizontal: {
-    width: 160,
-    aspectRatio: 16 / 9,
+    width: 168,
+    height: 94,
     borderRadius: 4,
     overflow: "hidden",
     flexShrink: 0,
@@ -198,8 +199,8 @@ const styles = StyleSheet.create({
   },
   thumbImgHorizontal: { width: "100%", height: "100%" },
   infoHorizontal: { flex: 1, gap: 3, paddingTop: 2 },
-  titleHorizontal: { fontSize: 13, fontWeight: "500", lineHeight: 18, color: "#0F0F0F" },
-  metaSmall: { fontSize: 12, color: "#606060" },
+  titleHorizontal: { fontSize: 14, fontWeight: "700", lineHeight: 19, color: "#0F0F0F" },
+  metaSmall: { fontSize: 12, color: "#606060", lineHeight: 17 },
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
