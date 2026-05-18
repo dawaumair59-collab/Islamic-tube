@@ -94,16 +94,18 @@ function ActionBtn({
 export default function AdminScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("Dashboard");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  // Redirect non-admins
+  // Redirect non-admins — wait for auth to finish loading before navigating
   useEffect(() => {
-    if (user && user.role !== "admin") router.back();
-    if (!user) router.back();
-  }, [user]);
+    if (isLoading) return;
+    if (!user || user.role !== "admin") {
+      router.replace("/(tabs)");
+    }
+  }, [user, isLoading]);
 
   // Data state
   const [stats, setStats] = useState<any>(null);
@@ -477,6 +479,9 @@ export default function AdminScreen() {
       )}
     </ScrollView>
   );
+
+  // Don't render anything while auth is still loading or user is not admin
+  if (isLoading || !user || user.role !== "admin") return null;
 
   return (
     <View style={[styles.screen, { backgroundColor: "#F9FAFB" }]}>
