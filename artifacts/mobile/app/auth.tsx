@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { authApi } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -41,20 +42,35 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const handleSubmit = async () => {
-    if (!email || !password) { setError("Please fill in all fields"); return; }
     setError("");
+    if (mode === "forgot") {
+      if (!email) { setError("Please enter your email address"); return; }
+      setLoading(true);
+      try {
+        await authApi.forgotPassword(email);
+        setForgotSent(true);
+      } catch {
+        setError("Could not send reset email. Please check your email and try again.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    if (!email || !password) { setError("Please fill in all fields"); return; }
     setLoading(true);
     try {
       if (mode === "login") { await login(email, password); }
       else if (mode === "register") { await register(name, email, password); }
       router.back();
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.response?.data?.detail ?? "Something went wrong. Please try again.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -209,8 +225,16 @@ export default function AuthScreen() {
               </>
             )}
 
+            {mode === "forgot" && forgotSent && (
+              <View style={[styles.successBox, { backgroundColor: "#F0FDF4", borderColor: "#86EFAC" }]}>
+                <Text style={[styles.successText, { color: "#166534" }]}>
+                  Reset link sent! Check your inbox and follow the instructions.
+                </Text>
+              </View>
+            )}
+
             {mode === "forgot" && (
-              <TouchableOpacity onPress={() => setMode("login")}>
+              <TouchableOpacity onPress={() => { setMode("login"); setForgotSent(false); }}>
                 <Text style={[styles.backToLogin, { color: colors.primary }]}>Back to Sign In</Text>
               </TouchableOpacity>
             )}
@@ -259,4 +283,6 @@ const styles = StyleSheet.create({
   googleGText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   backToLogin: { textAlign: "center", fontSize: 14, fontWeight: "600", paddingVertical: 4 },
   terms: { fontSize: 11, textAlign: "center", paddingTop: 12, lineHeight: 16 },
+  successBox: { borderWidth: 1, borderRadius: 10, padding: 12 },
+  successText: { fontSize: 14, lineHeight: 20, textAlign: "center", fontWeight: "500" },
 });

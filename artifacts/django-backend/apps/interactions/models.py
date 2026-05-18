@@ -132,3 +132,47 @@ class SavedVideo(models.Model):
 
     def __str__(self):
         return f"{self.user.username} saved {self.video.title}"
+
+
+class CommentReply(models.Model):
+    user       = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_replies",
+    )
+    comment    = models.ForeignKey(
+        Comment,
+        on_delete=models.CASCADE,
+        related_name="replies",
+    )
+    text       = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "comment_replies"
+        ordering = ["created_at"]
+        indexes  = [models.Index(fields=["comment"])]
+
+    def __str__(self):
+        return f"{self.user.username} replied to #{self.comment.pk}: {self.text[:50]}"
+
+
+class Playlist(models.Model):
+    user       = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="playlists",
+    )
+    title      = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    videos     = models.ManyToManyField("videos.Video", blank=True, related_name="playlists")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "playlists"
+        ordering = ["-updated_at"]
+        indexes  = [models.Index(fields=["user"])]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.title}"

@@ -1,4 +1,4 @@
-import { Send, ThumbsUp, Trash2 } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Send, ThumbsUp, Trash2 } from "lucide-react-native";
 import { Image } from "expo-image";
 import React, { useEffect, useState } from "react";
 import {
@@ -11,21 +11,96 @@ import {
 } from "react-native";
 
 import type { Comment } from "@/data/mockData";
-import { commentsApi } from "@/services/api";
+import { commentRepliesApi, commentsApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+
+interface ReplyData {
+  id: string;
+  text: string;
+  author: string;
+  avatar: string;
+  time: string;
+  userId?: string;
+}
 
 interface CommentItemProps {
   comment: Comment;
   currentUserId?: string;
   onDelete: (id: string) => void;
+  onAuthRequired?: (msg: string) => void;
 }
 
-function CommentItem({ comment, currentUserId, onDelete }: CommentItemProps) {
+function ReplyItem({
+  reply,
+  currentUserId,
+  commentId,
+  onDelete,
+}: {
+  reply: ReplyData;
+  currentUserId?: string;
+  commentId: string;
+  onDelete: (id: string) => void;
+}) {
   const colors = useColors();
+  const [deleting, setDeleting] = useState(false);
+  const isOwner = Boolean(currentUserId && reply.userId && currentUserId === reply.userId);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await commentRepliesApi.delete(reply.id);
+      onDelete(reply.id);
+    } catch {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <View style={styles.reply}>
+      <Image source={reply.avatar} style={styles.replyAvatar} contentFit="cover" />
+      <View style={styles.commentBody}>
+        <View style={styles.commentHeader}>
+          <Text style={[styles.commentAuthor, { color: colors.foreground }]}>
+            {reply.author}
+          </Text>
+          <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>
+            {reply.time}
+          </Text>
+          {isOwner && (
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={deleting}
+              style={styles.deleteBtn}
+            >
+              <Trash2
+                size={12}
+                color={deleting ? colors.mutedForeground : "#EF4444"}
+                strokeWidth={1.8}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={[styles.commentText, { color: colors.foreground }]}>
+          {reply.text}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function CommentItem({ comment, currentUserId, onDelete, onAuthRequired }: CommentItemProps) {
+  const colors = useColors();
+  const { user } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(comment.likes);
   const [deleting, setDeleting] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
+  const [replies, setReplies] = useState<ReplyData[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const [replyInput, setReplyInput] = useState("");
+  const [postingReply, setPostingReply] = useState(false);
+  const [showReplyInput, setShowReplyInput] = useState(false);
 
   const isOwner = Boolean(currentUserId && comment.userId && currentUserId === comment.userId);
 
@@ -43,6 +118,52 @@ function CommentItem({ comment, currentUserId, onDelete }: CommentItemProps) {
       onDelete(comment.id);
     } catch {
       setDeleting(false);
+    }
+  };
+
+  const handleToggleReplies = () => {
+    if (!showReplies && replies.length === 0) {
+      setLoadingReplies(true);
+      commentRepliesApi
+        .list(comment.id)
+        .then((r) => setReplies(r.map((c: any) => ({
+          id: c.id,
+          text: c.text,
+          author: c.author,
+          avatar: c.avatar || "https://picsum.photos/seed/av/100/100",
+          time: c.time,
+          userId: c.userId,
+        }))))
+        .catch(() => {})
+        .finally(() => setLoadingReplies(false));
+    }
+    setShowReplies((prev) => !prev);
+  };
+
+  const handleSendReply = async () => {
+    const text = replyInput.trim();
+    if (!text || postingReply) return;
+    if (!user) {
+      onAuthRequired?.("Sign in to reply");
+      return;
+    }
+    setPostingReply(true);
+    try {
+      const newReply = await commentRepliesApi.create(comment.id, text);
+      const mapped: ReplyData = {
+        id: newReply.id,
+        text: newReply.text,
+        author: newReply.author,
+        avatar: newReply.avatar || "https://picsum.photos/seed/av/100/100",
+        time: newReply.time,
+        userId: newReply.userId,
+      };
+      setReplies((prev) => [...prev, mapped]);
+      setReplyInput("");
+      setShowReplies(true);
+    } catch {
+    } finally {
+      setPostingReply(false);
     }
   };
 
@@ -91,12 +212,78 @@ function CommentItem({ comment, currentUserId, onDelete }: CommentItemProps) {
               {likes}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.replyBtn}>
+          <TouchableOpacity
+            style={styles.replyBtn}
+            onPress={() => {
+              if (!user) {
+                onAuthRequired?.("Sign in to reply");
+                return;
+              }
+              setShowReplyInput((prev) => !prev);
+            }}
+          >
             <Text style={[styles.replyText, { color: colors.mutedForeground }]}>
               Reply
             </Text>
           </TouchableOpacity>
+          {replies.length > 0 || showReplies ? (
+            <TouchableOpacity onPress={handleToggleReplies} style={styles.replyBtn}>
+              {showReplies ? (
+                <ChevronUp size={13} color={colors.primary} strokeWidth={2} />
+              ) : (
+                <ChevronDown size={13} color={colors.primary} strokeWidth={2} />
+              )}
+              <Text style={[styles.replyText, { color: colors.primary }]}>
+                {replies.length > 0 ? `${replies.length} ${replies.length === 1 ? "reply" : "replies"}` : "replies"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
+
+        {showReplyInput && (
+          <View style={[styles.replyInputRow, { borderColor: colors.border }]}>
+            <TextInput
+              style={[styles.replyInputField, { color: colors.foreground }]}
+              placeholder="Write a reply..."
+              placeholderTextColor={colors.mutedForeground}
+              value={replyInput}
+              onChangeText={setReplyInput}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendBtn,
+                { backgroundColor: colors.primary, opacity: postingReply ? 0.6 : 1 },
+              ]}
+              onPress={handleSendReply}
+              disabled={postingReply}
+            >
+              <Send size={12} color="#fff" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {showReplies && (
+          <View style={styles.repliesContainer}>
+            {loadingReplies ? (
+              <ActivityIndicator size="small" color="#2563EB" />
+            ) : replies.length === 0 ? (
+              <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>
+                No replies yet
+              </Text>
+            ) : (
+              replies.map((r) => (
+                <ReplyItem
+                  key={r.id}
+                  reply={r}
+                  currentUserId={currentUserId}
+                  commentId={comment.id}
+                  onDelete={(rid) => setReplies((prev) => prev.filter((x) => x.id !== rid))}
+                />
+              ))
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -142,7 +329,6 @@ export function CommentSection({ videoId, onAuthRequired }: Props) {
       setComments((prev) => [newComment, ...prev]);
       setInput("");
     } catch {
-      // API will return 401 if token expired — refresh interceptor handles it
     } finally {
       setPosting(false);
     }
@@ -194,9 +380,7 @@ export function CommentSection({ videoId, onAuthRequired }: Props) {
           style={{ marginTop: 12 }}
         />
       ) : comments.length === 0 ? (
-        <Text
-          style={[styles.emptyText, { color: colors.mutedForeground }]}
-        >
+        <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
           No comments yet. Be the first!
         </Text>
       ) : (
@@ -206,6 +390,7 @@ export function CommentSection({ videoId, onAuthRequired }: Props) {
             comment={comment}
             currentUserId={currentUserId}
             onDelete={handleDelete}
+            onAuthRequired={onAuthRequired}
           />
         ))
       )}
@@ -236,7 +421,9 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 13, textAlign: "center", paddingVertical: 16 },
   comment: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  reply: { flexDirection: "row", gap: 8, marginBottom: 8 },
   avatar: { width: 32, height: 32, borderRadius: 16, flexShrink: 0 },
+  replyAvatar: { width: 24, height: 24, borderRadius: 12, flexShrink: 0 },
   commentBody: { flex: 1, gap: 3 },
   commentHeader: {
     flexDirection: "row",
@@ -256,6 +443,18 @@ const styles = StyleSheet.create({
   },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   likeCount: { fontSize: 12 },
-  replyBtn: {},
+  replyBtn: { flexDirection: "row", alignItems: "center", gap: 3 },
   replyText: { fontSize: 12, fontWeight: "500" },
+  repliesContainer: { marginTop: 8, paddingLeft: 4, gap: 6 },
+  replyInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 8,
+    gap: 8,
+  },
+  replyInputField: { flex: 1, fontSize: 13 },
 });

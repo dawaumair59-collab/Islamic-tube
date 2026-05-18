@@ -22,4 +22,16 @@ urlpatterns = [
     path("saved/",                       views.saved_list,         name="saved-list"),
     path("saved/<int:pk>/",              views.saved_toggle,       name="saved-toggle"),
     path("saved/<int:pk>/status/",       views.saved_status,       name="saved-status"),
+
+    # ── Playlists ────────────────────────────────────────────────── #
+    path("playlists/",                                           views.playlist_list,    name="playlist-list"),
+    path("playlists/<int:pk>/",                                  views.playlist_detail,  name="playlist-detail"),
+    path("playlists/<int:pk>/videos/<int:video_pk>/",            views.playlist_video,   name="playlist-video"),
+
+    # ── Comment replies ──────────────────────────────────────────── #
+    path("comments/<int:pk>/replies/",   views.comment_replies,   name="comment-replies"),
+    path("replies/<int:pk>/",            views.delete_reply,      name="reply-delete"),
+
+    # ── Live chat (polling) ──────────────────────────────────────── #
+    path("live-chat/<str:room>/messages/", views.live_chat_messages, name="live-chat-messages"),
 ]

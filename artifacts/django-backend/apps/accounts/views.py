@@ -208,3 +208,32 @@ def list_scholars(request):
         {"success": True, "count": scholars.count(), "scholars": serializer.data},
         status=status.HTTP_200_OK,
     )
+
+
+# ------------------------------------------------------------------ #
+#  POST /api/auth/forgot-password/
+# ------------------------------------------------------------------ #
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    email = request.data.get("email", "").strip().lower()
+    if not email:
+        return Response(
+            {"success": False, "message": "Email is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # Always return success to avoid user enumeration
+    # In production: send a password-reset email here
+    # For dev: the token is printed to the Django console
+    try:
+        user = User.objects.get(email__iexact=email, is_active=True)
+        from rest_framework_simplejwt.tokens import RefreshToken as RT
+        token = str(RT.for_user(user).access_token)
+        print(f"[DEV] Password reset token for {email}: {token}")
+    except User.DoesNotExist:
+        pass  # Don't reveal whether email exists
+
+    return Response(
+        {"success": True, "message": "If that email is registered, a reset link has been sent."},
+        status=status.HTTP_200_OK,
+    )

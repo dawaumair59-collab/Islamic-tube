@@ -17,7 +17,7 @@ import { PlaylistCard } from "@/components/PlaylistCard";
 import { VideoCard } from "@/components/VideoCard";
 import { PLAYLISTS } from "@/data/mockData";
 import type { Video } from "@/data/mockData";
-import { likesApi, savedVideosApi, watchHistoryApi } from "@/services/api";
+import { likesApi, playlistsApi, savedVideosApi, watchHistoryApi } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 
@@ -31,10 +31,30 @@ export default function LibraryScreen() {
   const [likedVideos, setLikedVideos] = useState<Video[]>([]);
   const [historyVideos, setHistoryVideos] = useState<Video[]>([]);
   const [savedVideos, setSavedVideos] = useState<Video[]>([]);
+  const [playlists, setPlaylists] = useState<typeof PLAYLISTS>(PLAYLISTS);
   const [loading, setLoading] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 84 : insets.bottom + 60;
+
+  useEffect(() => {
+    if (!user) return;
+    playlistsApi
+      .list()
+      .then((results) => {
+        if (results.length > 0) {
+          setPlaylists(
+            results.map((p) => ({
+              id: String(p.id),
+              title: p.title,
+              videoCount: p.video_count,
+              thumbnail: p.thumbnail ?? "https://picsum.photos/seed/pl/480/270",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -116,7 +136,7 @@ export default function LibraryScreen() {
               New Playlist
             </Text>
           </TouchableOpacity>
-          {PLAYLISTS.map((pl) => (
+          {playlists.map((pl) => (
             <PlaylistCard key={pl.id} playlist={pl} />
           ))}
         </View>

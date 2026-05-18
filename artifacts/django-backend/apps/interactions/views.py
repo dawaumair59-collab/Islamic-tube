@@ -287,3 +287,170 @@ def saved_toggle(request, pk):
 def saved_status(request, pk):
     saved = SavedVideo.objects.filter(user=request.user, video_id=pk).exists()
     return Response({"saved": saved}, status=status.HTTP_200_OK)
+
+
+# ================================================================== #
+#  COMMENT REPLIES
+# ================================================================== #
+from .models import CommentReply
+from .serializers import CommentReplySerializer
+
+
+# GET + POST /api/comments/{id}/replies/
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def comment_replies(request, pk):
+    try:
+        comment = Comment.objects.get(pk=pk)
+    except Comment.DoesNotExist:
+        return Response({"success": False, "message": "Comment not found."}, status=404)
+
+    if request.method == "GET":
+        replies = CommentReply.objects.filter(comment=comment).select_related("user")
+        serializer = CommentReplySerializer(replies, many=True)
+        return Response({"success": True, "count": replies.count(), "results": serializer.data})
+
+    if not request.user.is_authenticated:
+        return Response({"success": False, "message": "Authentication required."}, status=401)
+
+    serializer = CommentReplySerializer(
+        data=request.data,
+        context={"request": request, "comment": comment},
+    )
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=400)
+    reply = serializer.save()
+    return Response({"success": True, "reply": CommentReplySerializer(reply).data}, status=201)
+
+
+# DELETE /api/replies/{id}/
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_reply(request, pk):
+    try:
+        reply = CommentReply.objects.select_related("user").get(pk=pk)
+    except CommentReply.DoesNotExist:
+        return Response({"success": False, "message": "Reply not found."}, status=404)
+
+    if reply.user != request.user and not request.user.is_staff:
+        return Response({"success": False, "message": "You can only delete your own replies."}, status=403)
+
+    reply.delete()
+    return Response({"success": True, "message": "Reply deleted."})
+
+
+# ================================================================== #
+#  PLAYLISTS
+# ================================================================== #
+from .models import Playlist
+from .serializers import PlaylistSerializer
+
+
+# GET + POST /api/playlists/
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def playlist_list(request):
+    if request.method == "GET":
+        playlists = Playlist.objects.filter(user=request.user).prefetch_related("videos")
+        serializer = PlaylistSerializer(playlists, many=True)
+        return Response({"success": True, "count": playlists.count(), "results": serializer.data})
+
+    serializer = PlaylistSerializer(data=request.data, context={"request": request})
+    if not serializer.is_valid():
+        return Response({"success": False, "errors": serializer.errors}, status=400)
+    playlist = serializer.save()
+    return Response({"success": True, "playlist": PlaylistSerializer(playlist).data}, status=201)
+
+
+# GET + PATCH + DELETE /api/playlists/{id}/
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAuthenticated])
+def playlist_detail(request, pk):
+    try:
+        playlist = Playlist.objects.prefetch_related("videos").get(pk=pk, user=request.user)
+    except Playlist.DoesNotExist:
+        return Response({"success": False, "message": "Playlist not found."}, status=404)
+
+    if request.method == "GET":
+        from apps.videos.serializers import VideoListSerializer
+        return Response({
+            "success": True,
+            "playlist": PlaylistSerializer(playlist).data,
+            "videos": VideoListSerializer(playlist.videos.filter(status="approved"), many=True).data,
+        })
+
+    if request.method == "PATCH":
+        serializer = PlaylistSerializer(playlist, data=request.data, partial=True, context={"request": request})
+        if not serializer.is_valid():
+            return Response({"success": False, "errors": serializer.errors}, status=400)
+        serializer.save()
+        return Response({"success": True, "playlist": serializer.data})
+
+    playlist.delete()
+    return Response({"success": True, "message": "Playlist deleted."})
+
+
+# POST /api/playlists/{id}/add/{video_id}/
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def playlist_video(request, pk, video_pk):
+    try:
+        playlist = Playlist.objects.get(pk=pk, user=request.user)
+    except Playlist.DoesNotExist:
+        return Response({"success": False, "message": "Playlist not found."}, status=404)
+
+    try:
+        from apps.videos.models import Video as VideoModel
+        video = VideoModel.objects.get(pk=video_pk, status="approved")
+    except VideoModel.DoesNotExist:
+        return Response({"success": False, "message": "Video not found."}, status=404)
+
+    if request.method == "POST":
+        playlist.videos.add(video)
+        return Response({"success": True, "message": "Video added to playlist."})
+
+    playlist.videos.remove(video)
+    return Response({"success": True, "message": "Video removed from playlist."})
+
+
+# ================================================================== #
+#  LIVE CHAT (polling)
+# ================================================================== #
+import json
+from django.core.cache import cache
+
+
+# GET + POST /api/live-chat/{room}/messages/
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def live_chat_messages(request, room):
+    cache_key = f"live_chat_{room}"
+
+    if request.method == "GET":
+        since = int(request.query_params.get("since", 0))
+        messages = cache.get(cache_key, [])
+        new_msgs = [m for m in messages if m["ts"] > since]
+        return Response({"success": True, "messages": new_msgs, "ts": int(__import__("time").time() * 1000)})
+
+    if not request.user.is_authenticated:
+        return Response({"success": False, "message": "Sign in to chat."}, status=401)
+
+    text = request.data.get("text", "").strip()
+    if not text or len(text) > 500:
+        return Response({"success": False, "message": "Message must be 1-500 characters."}, status=400)
+
+    messages = cache.get(cache_key, [])
+    msg = {
+        "id": len(messages) + 1,
+        "text": text,
+        "author": request.user.full_name or request.user.username,
+        "username": request.user.username,
+        "ts": int(__import__("time").time() * 1000),
+    }
+    messages.append(msg)
+    # Keep last 100 messages
+    if len(messages) > 100:
+        messages = messages[-100:]
+    cache.set(cache_key, messages, 3600)
+
+    return Response({"success": True, "message": msg}, status=201)

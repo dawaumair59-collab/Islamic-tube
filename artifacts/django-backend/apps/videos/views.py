@@ -273,3 +273,48 @@ def pending_videos(request):
         status=Video.STATUS_PENDING
     ).select_related("scholar").order_by("created_at")
     return _paginate(qs, request, VideoDetailSerializer)
+
+
+# ------------------------------------------------------------------ #
+#  GET /api/videos/{id}/related/  — recommendations
+# ------------------------------------------------------------------ #
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def related_videos(request, pk):
+    try:
+        video = Video.objects.select_related("scholar").get(pk=pk, status=Video.STATUS_APPROVED)
+    except Video.DoesNotExist:
+        return Response({"success": False, "message": "Video not found."}, status=404)
+
+    limit = int(request.query_params.get("limit", 10))
+
+    # Same category first, then same scholar, then recent
+    same_cat = (
+        Video.objects.filter(status=Video.STATUS_APPROVED, visibility="public", category=video.category)
+        .exclude(pk=pk)
+        .select_related("scholar")
+        .order_by("-view_count")[:limit]
+    )
+    ids = set(v.pk for v in same_cat)
+    more = (
+        Video.objects.filter(status=Video.STATUS_APPROVED, visibility="public", scholar=video.scholar)
+        .exclude(pk=pk)
+        .exclude(pk__in=ids)
+        .select_related("scholar")
+        .order_by("-created_at")[:max(0, limit - len(ids))]
+    )
+
+    results = list(same_cat) + list(more)
+    if len(results) < limit:
+        fill = (
+            Video.objects.filter(status=Video.STATUS_APPROVED, visibility="public")
+            .exclude(pk__in=[v.pk for v in results] + [pk])
+            .select_related("scholar")
+            .order_by("-view_count")[:limit - len(results)]
+        )
+        results += list(fill)
+
+    return Response(
+        {"success": True, "count": len(results), "results": VideoListSerializer(results, many=True).data},
+        status=200,
+    )

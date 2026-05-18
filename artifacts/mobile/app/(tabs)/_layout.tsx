@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import {
   Clapperboard,
   Home,
+  Library,
   Plus,
   Users,
   CircleUser,
@@ -35,7 +36,7 @@ export default function TabLayout() {
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: BORDER,
             elevation: 0,
-            shadowOpacity: 0,
+            ...(Platform.OS === "web" ? { boxShadow: "none" } : { shadowOpacity: 0 }),
             height: tabBarHeight,
             paddingBottom: isWeb ? 6 : insets.bottom,
             paddingTop: 6,
@@ -101,16 +102,28 @@ export default function TabLayout() {
         />
         <Tabs.Screen
           name="search"
+          options={{ href: null }}
+        />
+        <Tabs.Screen
+          name="subscriptions"
           options={{
-            href: null,
+            title: "Subscriptions",
+            tabBarIcon: ({ color, focused }) => (
+              <Users
+                size={23}
+                color={color}
+                fill={focused ? color : "transparent"}
+                strokeWidth={focused ? 2 : 1.8}
+              />
+            ),
           }}
         />
         <Tabs.Screen
           name="library"
           options={{
-            title: "Subscriptions",
+            title: "Library",
             tabBarIcon: ({ color, focused }) => (
-              <Users
+              <Library
                 size={23}
                 color={color}
                 fill={focused ? color : "transparent"}

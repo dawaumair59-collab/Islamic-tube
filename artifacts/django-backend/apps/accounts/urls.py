@@ -13,6 +13,9 @@ urlpatterns = [
     path("me/",             views.me,             name="auth-me"),
     path("me/update/",      views.update_profile, name="auth-me-update"),
 
+    # ---- Password reset ----
+    path("forgot-password/",  views.forgot_password,  name="auth-forgot-password"),
+
     # ---- Scholar ----
     path("scholar/register/", views.scholar_register, name="scholar-register"),
     path("scholars/",         views.list_scholars,    name="scholar-list"),

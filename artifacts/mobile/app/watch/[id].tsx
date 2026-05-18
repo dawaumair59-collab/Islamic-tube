@@ -17,8 +17,7 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { VideoView, useVideoPlayer } from "expo-video";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert as RNAlert,
@@ -34,9 +33,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AuthPromptModal } from "@/components/AuthPromptModal";
 import { CommentSection } from "@/components/CommentSection";
+import { NativeVideoPlayer } from "@/components/NativeVideoPlayer";
 import { VideoCard } from "@/components/VideoCard";
 import type { Video } from "@/data/mockData";
 import {
+  relatedVideosApi,
   savedVideosApi,
   subscriptionsApi,
   videosApi,
@@ -44,6 +45,54 @@ import {
 } from "@/services/api";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+
+// ── Web-only HTML5 video player ───────────────────────────────────
+function WebVideoPlayer({ videoUrl }: { videoUrl: string }) {
+  const videoRef = useRef<any>(null);
+  const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const [speed, setSpeed] = useState(1);
+
+  const cycleSpeed = () => {
+    if (!videoRef.current) return;
+    const idx = SPEEDS.indexOf(speed);
+    const next = SPEEDS[(idx + 1) % SPEEDS.length];
+    videoRef.current.playbackRate = next;
+    setSpeed(next);
+  };
+
+  return (
+    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#000" }}>
+      {(React.createElement as any)("video", {
+        ref: videoRef,
+        src: videoUrl,
+        autoPlay: true,
+        controls: true,
+        playsInline: true,
+        style: {
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          backgroundColor: "#000",
+          display: "block",
+        },
+      })}
+      <TouchableOpacity
+        style={{
+          position: "absolute",
+          bottom: 46,
+          right: 8,
+          backgroundColor: "rgba(0,0,0,0.7)",
+          borderRadius: 4,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+        }}
+        onPress={cycleSpeed}
+      >
+        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>{speed}x</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function WatchScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -67,28 +116,15 @@ export default function WatchScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  // ── Video player ──────────────────────────────────────────────────
-  const player = useVideoPlayer(null, (p) => {
-    p.loop = false;
-  });
-
-  useEffect(() => {
-    if (video?.videoUrl) {
-      try {
-        player.replace({ uri: video.videoUrl });
-      } catch {}
-    }
-  }, [video?.videoUrl]);
-
   // ── Load data ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([videosApi.detail(id), videosApi.list()])
-      .then(([detail, all]) => {
+    Promise.all([videosApi.detail(id), relatedVideosApi.list(id)])
+      .then(([detail, rel]) => {
         setVideo(detail);
         setLikes(detail.likes);
-        setRelated(all.filter((v) => v.id !== String(id)).slice(0, 10));
+        setRelated(rel.length > 0 ? rel : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -226,20 +262,11 @@ export default function WatchScreen() {
         {/* ── Player ─────────────────────────────────────────────── */}
         <View style={styles.playerWrapper}>
           {hasVideo ? (
-            <>
-              <VideoView
-                player={player}
-                style={StyleSheet.absoluteFill}
-                allowsPictureInPicture
-                nativeControls
-                contentFit="contain"
-              />
-              <LinearGradient
-                colors={["rgba(0,0,0,0.55)", "transparent"]}
-                style={styles.topGradient}
-                pointerEvents="none"
-              />
-            </>
+            Platform.OS === "web" ? (
+              <WebVideoPlayer videoUrl={video.videoUrl} />
+            ) : (
+              <NativeVideoPlayer videoUrl={video.videoUrl} />
+            )
           ) : (
             <>
               <Image
@@ -249,8 +276,7 @@ export default function WatchScreen() {
               />
               <LinearGradient
                 colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.6)"]}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
+                style={[StyleSheet.absoluteFill, { pointerEvents: "none" } as any]}
               />
               <TouchableOpacity
                 style={styles.playCenter}

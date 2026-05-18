@@ -150,8 +150,7 @@ function ShortItem({ item, isActive }: { item: Video; isActive: boolean }) {
       )}
       <LinearGradient
         colors={["rgba(0,0,0,0.15)", "transparent", "rgba(0,0,0,0.75)"]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { pointerEvents: "none" } as any]}
       />
 
       <View

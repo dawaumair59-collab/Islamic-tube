@@ -9,7 +9,8 @@ const PLACEHOLDER_AVATAR = require("../assets/images/placeholder-scholar.png");
 
 const BASE_URL = (() => {
   if (Platform.OS === "web") {
-    return "http://localhost:5000/api";
+    // Use relative URL so requests go through the Metro proxy on any domain
+    return "/api";
   }
   return process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000/api";
 })();
@@ -497,5 +498,70 @@ export const notificationsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/notifications/${id}/`);
+  },
+};
+
+export const relatedVideosApi = {
+  list: async (videoId: string, limit = 10): Promise<Video[]> => {
+    try {
+      const res = await apiClient.get(`/videos/${videoId}/related/`, { params: { limit } });
+      return paginatedList(res.data).map(normalizeVideo);
+    } catch {
+      // Fallback to category-based from main list
+      return [];
+    }
+  },
+};
+
+export const playlistsApi = {
+  list: async () => {
+    const res = await apiClient.get("/playlists/");
+    return (res.data.results ?? []) as Array<{ id: number; title: string; description: string; video_count: number; thumbnail: string | null; created_at: string; updated_at: string }>;
+  },
+  create: async (title: string, description = "") => {
+    const res = await apiClient.post("/playlists/", { title, description });
+    return res.data.playlist;
+  },
+  detail: async (id: number): Promise<{ playlist: any; videos: Video[] }> => {
+    const res = await apiClient.get(`/playlists/${id}/`);
+    return { playlist: res.data.playlist, videos: paginatedList({ results: res.data.videos }).map(normalizeVideo) };
+  },
+  update: async (id: number, data: { title?: string; description?: string }) => {
+    const res = await apiClient.patch(`/playlists/${id}/`, data);
+    return res.data.playlist;
+  },
+  delete: async (id: number) => {
+    await apiClient.delete(`/playlists/${id}/`);
+  },
+  addVideo: async (playlistId: number, videoId: string) => {
+    await apiClient.post(`/playlists/${playlistId}/videos/${videoId}/`);
+  },
+  removeVideo: async (playlistId: number, videoId: string) => {
+    await apiClient.delete(`/playlists/${playlistId}/videos/${videoId}/`);
+  },
+};
+
+export const commentRepliesApi = {
+  list: async (commentId: string) => {
+    const res = await apiClient.get(`/comments/${commentId}/replies/`);
+    return (res.data.results ?? []).map((r: any) => normalizeComment(r));
+  },
+  create: async (commentId: string, text: string): Promise<Comment> => {
+    const res = await apiClient.post(`/comments/${commentId}/replies/`, { text });
+    return normalizeComment(res.data.reply ?? res.data);
+  },
+  delete: async (replyId: string) => {
+    await apiClient.delete(`/replies/${replyId}/`);
+  },
+};
+
+export const liveChatApi = {
+  getMessages: async (room: string, since = 0) => {
+    const res = await apiClient.get(`/live-chat/${room}/messages/`, { params: { since } });
+    return res.data as { messages: Array<{ id: number; text: string; author: string; username: string; ts: number }>; ts: number };
+  },
+  sendMessage: async (room: string, text: string) => {
+    const res = await apiClient.post(`/live-chat/${room}/messages/`, { text });
+    return res.data.message;
   },
 };

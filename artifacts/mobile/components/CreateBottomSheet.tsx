@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Modal,
+  Platform,
   View,
   Text,
   TouchableOpacity,
@@ -11,9 +12,12 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+
 import { Video, Clapperboard, Radio, CheckCircle, ChevronRight } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
+
+const nativeDriver = Platform.OS !== "web";
 
 interface CreateBottomSheetProps {
   visible: boolean;
@@ -50,13 +54,13 @@ export default function CreateBottomSheet({
           toValue: 1,
           duration: 220,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
           duration: 280,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]).start();
     } else {
@@ -64,13 +68,13 @@ export default function CreateBottomSheet({
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 180,
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
         Animated.timing(slideAnim, {
           toValue: 300,
           duration: 220,
           easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: nativeDriver,
         }),
       ]).start();
     }
@@ -346,11 +350,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 36,
     paddingHorizontal: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
     elevation: 16,
+    ...Platform.select({ web: { boxShadow: "0 -3px 12px rgba(0,0,0,0.12)" } as any }),
   },
   handle: {
     width: 36,

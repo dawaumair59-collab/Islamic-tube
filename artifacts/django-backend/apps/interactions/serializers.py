@@ -81,3 +81,53 @@ class SavedVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model  = SavedVideo
         fields = ["id", "video", "saved_at"]
+
+
+class CommentReplySerializer(serializers.ModelSerializer):
+    username   = serializers.CharField(source="user.username",   read_only=True)
+    full_name  = serializers.CharField(source="user.full_name",  read_only=True)
+    avatar_url = serializers.CharField(source="user.avatar_url", read_only=True)
+    user_id    = serializers.IntegerField(source="user.id",      read_only=True)
+
+    class Meta:
+        model  = __import__("apps.interactions.models", fromlist=["CommentReply"]).CommentReply
+        fields = ["id", "text", "username", "full_name", "avatar_url", "user_id", "created_at"]
+        read_only_fields = ["id", "username", "full_name", "avatar_url", "user_id", "created_at"]
+
+    def validate_text(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Reply cannot be empty.")
+        return value
+
+    def create(self, validated_data):
+        return __import__("apps.interactions.models", fromlist=["CommentReply"]).CommentReply.objects.create(
+            user=self.context["request"].user,
+            comment=self.context["comment"],
+            **validated_data,
+        )
+
+
+class PlaylistSerializer(serializers.ModelSerializer):
+    video_count = serializers.SerializerMethodField()
+    thumbnail   = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = __import__("apps.interactions.models", fromlist=["Playlist"]).Playlist
+        fields = ["id", "title", "description", "video_count", "thumbnail", "created_at", "updated_at"]
+        read_only_fields = ["id", "video_count", "thumbnail", "created_at", "updated_at"]
+
+    def get_video_count(self, obj):
+        return obj.videos.count()
+
+    def get_thumbnail(self, obj):
+        first = obj.videos.select_related().first()
+        if first and first.thumbnail_url:
+            return first.thumbnail_url
+        return None
+
+    def create(self, validated_data):
+        return __import__("apps.interactions.models", fromlist=["Playlist"]).Playlist.objects.create(
+            user=self.context["request"].user,
+            **validated_data,
+        )
