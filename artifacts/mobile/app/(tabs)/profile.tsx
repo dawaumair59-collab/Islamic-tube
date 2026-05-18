@@ -7,7 +7,6 @@ import {
   PlayCircle,
   Search,
   Settings,
-  Shield,
   ThumbsUp,
 } from "lucide-react-native";
 import { Image } from "expo-image";
@@ -46,8 +45,6 @@ export default function ProfileScreen() {
   const displayName = user ? user.name : "Sign in";
   const displayHandle = user ? `@${user.username ?? user.name} · IslamicTube` : "Personalize your experience";
   const displayAvatar = require("../../assets/images/placeholder-scholar.png");
-
-  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     scholarsApi
@@ -88,23 +85,6 @@ export default function ProfileScreen() {
 
         <View style={styles.divider} />
 
-        {/* Admin Panel link — only for staff */}
-        {isAdmin && (
-          <>
-            <TouchableOpacity
-              style={styles.adminRow}
-              onPress={() => router.push("/admin")}
-              activeOpacity={0.8}
-            >
-              <View style={styles.adminIconWrap}>
-                <Shield size={18} color="#2563EB" strokeWidth={2} />
-              </View>
-              <Text style={styles.adminLabel}>Admin Panel</Text>
-              <ChevronRight size={16} color="#2563EB" strokeWidth={1.8} />
-            </TouchableOpacity>
-            <View style={styles.divider} />
-          </>
-        )}
 
         {/* Subscriptions shelf */}
         <View style={styles.scholarsSection}>
@@ -201,23 +181,6 @@ const styles = StyleSheet.create({
   userHandle:  { fontSize: 13, color: "#606060" },
   signInLink:  { fontSize: 13, color: "#2563EB", fontWeight: "500", marginTop: 2 },
   divider:     { height: StyleSheet.hairlineWidth, backgroundColor: "#E5E5E5", marginVertical: 4 },
-  adminRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#EEF2FF",
-  },
-  adminIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#DBEAFE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  adminLabel:  { flex: 1, fontSize: 14, color: "#2563EB", fontWeight: "600" },
   scholarsSection: { paddingVertical: 12 },
   scholarsHeader: {
     flexDirection: "row",
