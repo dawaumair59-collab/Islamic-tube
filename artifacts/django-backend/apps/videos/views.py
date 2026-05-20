@@ -1,3 +1,6 @@
+import cloudinary
+import cloudinary.uploader
+
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -203,7 +206,6 @@ def approve_video(request, pk):
     video.approved_at = timezone.now()
     video.save(update_fields=["status", "rejection_reason", "approved_by", "approved_at", "updated_at"])
 
-    # Update scholar video count
     if hasattr(video.scholar, "scholar_profile"):
         from django.db.models import F
         video.scholar.scholar_profile.__class__.objects.filter(
@@ -288,7 +290,6 @@ def related_videos(request, pk):
 
     limit = int(request.query_params.get("limit", 10))
 
-    # Same category first, then same scholar, then recent
     same_cat = (
         Video.objects.filter(status=Video.STATUS_APPROVED, visibility="public", category=video.category)
         .exclude(pk=pk)
@@ -318,3 +319,44 @@ def related_videos(request, pk):
         {"success": True, "count": len(results), "results": VideoListSerializer(results, many=True).data},
         status=200,
     )
+
+
+# ------------------------------------------------------------------ #
+#  POST /api/videos/cloudinary-upload/  — upload file to Cloudinary
+# ------------------------------------------------------------------ #
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cloudinary_upload(request):
+    if not request.user.is_scholar:
+        return Response(
+            {"success": False, "message": "Only scholars can upload videos."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    file = request.FILES.get("file")
+    if not file:
+        return Response(
+            {"success": False, "message": "No file provided."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    file_type = request.data.get("type", "video")
+
+    try:
+        result = cloudinary.uploader.upload(
+            file,
+            resource_type=file_type,
+            folder="islamictube/",
+        )
+        return Response({
+            "success": True,
+            "url": result["secure_url"],
+            "public_id": result["public_id"],
+            "duration": result.get("duration", 0),
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response(
+            {"success": False, "message": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

@@ -157,3 +157,10 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
+# Cloudinary Settings
+import cloudinary
+cloudinary.config(
+    cloud_name = os.environ.get('dapsd3zzy'),
+    api_key = os.environ.get('968198367457861'),
+    api_secret = os.environ.get('AAzAqdZplKd2dEJxsnoB24jvvF8')
+)
